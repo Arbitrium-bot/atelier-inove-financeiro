@@ -20,13 +20,15 @@ app = Flask(__name__, static_folder=None)
 
 
 DEFAULT_MEMBERS = ["Lucas", "Débora", "André", "Daniel", "Helen"]
-DEFAULT_EXPENSES = [
-    ("Aluguel", "3534.01", ["Lucas", "Débora", "André", "Helen"], "Exemplo vindo da divisão atual"),
-    ("Urgtec", "200.00", ["Lucas", "Débora", "André", "Daniel", "Helen"], "Sistema LabFácil/Urgtec"),
-    ("Café", "400.00", ["Lucas", "Débora", "André"], "Exemplo de compra compartilhada"),
-    ("Água", "161.00", ["Lucas", "Débora", "André", "Daniel", "Helen"], ""),
-    ("Luz", "1788.00", ["Lucas", "Débora", "André", "Helen"], ""),
-]
+DEFAULT_EXPENSES = []
+
+LEGACY_DEMO_EXPENSES = {
+    ("Aluguel", 3534.01),
+    ("Urgtec", 200.00),
+    ("Café", 400.00),
+    ("Água", 161.00),
+    ("Luz", 1788.00),
+}
 
 DEFAULT_TEMPLATES = [
     "Academia",
@@ -107,7 +109,7 @@ def load_db():
                     "updated_at": now_iso(),
                 }
             )
-        save_db({"members": members, "expenses": expenses, "templates": DEFAULT_TEMPLATES})
+        save_db({"members": members, "expenses": expenses, "templates": DEFAULT_TEMPLATES, "seed_version": 2})
     with DB_PATH.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
     changed = False
@@ -121,6 +123,13 @@ def load_db():
                 data["templates"].append(item)
                 changed = True
     if changed:
+        save_db(data)
+    if data.get("seed_version", 1) < 2:
+        data["expenses"] = [
+            expense for expense in data.get("expenses", [])
+            if (expense.get("name"), round(float(expense.get("amount", 0)), 2)) not in LEGACY_DEMO_EXPENSES
+        ]
+        data["seed_version"] = 2
         save_db(data)
     return data
 
