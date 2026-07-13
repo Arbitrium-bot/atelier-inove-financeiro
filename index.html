@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#c9932d">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <title>Atelier Inove Financeiro</title>
+  <style>
+    :root {
+      --bg: #f6f4ef;
+      --panel: #ffffff;
+      --panel-2: #fbf8f1;
+      --line: #ddd5c6;
+      --gold: #b77d18;
+      --gold-2: #8a5a0a;
+      --text: #1f1b16;
+      --muted: #756b5d;
+      --danger: #bc3535;
+      --ok: #248a58;
+      --input: #fffdf8;
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #fffaf0 0%, var(--bg) 320px);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    button, input, textarea, select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      background: var(--gold);
+      color: #171108;
+      font-weight: 750;
+      min-height: 42px;
+      padding: 0 14px;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #fffdf8;
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+
+    button.danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid rgba(232, 97, 97, .35);
+    }
+
+    button.ghost {
+      background: transparent;
+      color: var(--gold-2);
+      border: 1px solid rgba(201, 147, 45, .4);
+    }
+
+    .app {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0 22px;
+    }
+
+    .logo {
+      width: 58px;
+      height: 58px;
+      object-fit: contain;
+      border-radius: 14px;
+      background: #111;
+      border: 1px solid rgba(183, 125, 24, .32);
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(24px, 5vw, 42px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.35;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 410px) 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 18px 50px rgba(45, 34, 18, .1);
+    }
+
+    .panel h2 {
+      font-size: 17px;
+      margin-bottom: 14px;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: var(--input);
+      color: var(--text);
+      border-radius: 8px;
+      min-height: 44px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 78px;
+      resize: vertical;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201, 147, 45, .16);
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .member-buttons {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .member-toggle {
+      min-height: 46px;
+      background: #fffdf8;
+      color: var(--text);
+      border: 1px solid var(--line);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .member-toggle.active {
+      background: linear-gradient(180deg, #f3c46b, var(--gold));
+      color: #1f1608;
+      border-color: transparent;
+    }
+
+    .calc {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .calc strong, .total-card strong {
+      display: block;
+      font-size: 20px;
+      margin-top: 4px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .actions button {
+      flex: 1;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .topbar label {
+      max-width: 210px;
+    }
+
+    .totals {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .total-card {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .expense {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .expense-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .expense-title {
+      font-weight: 800;
+      font-size: 16px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      border-radius: 999px;
+      padding: 0 9px;
+      background: rgba(201, 147, 45, .14);
+      color: var(--gold-2);
+      border: 1px solid rgba(201, 147, 45, .25);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .shares {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+    }
+
+    .share {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      background: #fbf8f1;
+      border: 1px solid #e5dccb;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+
+    .share span:last-child {
+      color: var(--gold-2);
+      font-weight: 800;
+    }
+
+    .expense-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .expense-actions button {
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
+    .members-admin {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: #1f1b16;
+      color: #fffaf0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-weight: 750;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+      z-index: 10;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-6px);
+    }
+
+    @media (max-width: 860px) {
+      .app { padding: 14px; }
+      .layout { grid-template-columns: 1fr; }
+      .topbar { align-items: stretch; flex-direction: column; }
+      .topbar label { max-width: none; }
+    }
+
+    @media (max-width: 480px) {
+      .two, .calc { grid-template-columns: 1fr; }
+      .member-buttons { grid-template-columns: 1fr; }
+      header { align-items: flex-start; }
+      .logo { width: 50px; height: 50px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <img class="logo" src="/logo-inove.png" alt="Atelier Inove">
+      <div>
+        <h1>Financeiro Atelier Inove</h1>
+        <p class="subtitle">Despesas compartilhadas, divisão automática e totais por sócio.</p>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <h2 id="formTitle">Nova despesa</h2>
+        <form class="form-grid" id="expenseForm">
+          <input type="hidden" id="editingId">
+          <label>
+            Despesa
+            <input id="expenseName" placeholder="Ex: Aluguel, Urgtec, Café" autocomplete="off" required>
+          </label>
+          <div class="two">
+            <label>
+              Valor
+              <input id="expenseAmount" inputmode="decimal" placeholder="3500,00" required>
+            </label>
+            <label>
+              Data
+              <input id="expenseDate" type="date" required>
+            </label>
+          </div>
+          <label>
+            Quem participa da despesa
+            <div class="member-buttons" id="memberButtons"></div>
+          </label>
+          <div class="calc">
+            <div>
+              <span class="muted">Participantes</span>
+              <strong id="calcCount">0</strong>
+            </div>
+            <div>
+              <span class="muted">Valor por sócio</span>
+              <strong id="calcShare">R$ 0,00</strong>
+            </div>
+          </div>
+          <label>
+            Observações
+            <textarea id="expenseNotes" placeholder="Opcional"></textarea>
+          </label>
+          <div class="actions">
+            <button type="submit" id="saveBtn">Salvar despesa</button>
+            <button type="button" class="secondary" id="clearBtn">Limpar</button>
+          </div>
+        </form>
+
+        <div style="height: 18px"></div>
+        <h2>Sócios</h2>
+        <form class="actions" id="memberForm">
+          <input id="memberName" placeholder="Novo sócio" autocomplete="off">
+          <button type="submit" class="ghost">Adicionar</button>
+        </form>
+        <div class="members-admin" id="membersAdmin"></div>
+      </section>
+
+      <section class="panel">
+        <div class="topbar">
+          <div>
+            <h2>Resumo do mês</h2>
+            <p class="muted" id="summaryText">Carregando...</p>
+          </div>
+          <div class="actions">
+            <label>
+              Mês
+              <input type="month" id="monthFilter">
+            </label>
+            <button class="secondary" id="exportBtn" type="button">Exportar CSV</button>
+          </div>
+        </div>
+        <div class="totals" id="totals"></div>
+        <div class="list" id="expenseList"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const state = {
+      members: [],
+      expenses: [],
+      totals: {},
+      selected: new Set(),
+      month: new Date().toISOString().slice(0, 7)
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+    function parseMoney(value) {
+      const cleaned = String(value || "0").replace(/\./g, "").replace(",", ".");
+      const number = Number.parseFloat(cleaned);
+      return Number.isFinite(number) ? number : 0;
+    }
+
+    function showToast(message) {
+      $("toast").textContent = message;
+      $("toast").classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => $("toast").classList.remove("show"), 2200);
+    }
+
+    async function api(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Não foi possível salvar.");
+      return data;
+    }
+
+    async function load() {
+      const data = await api(`/api/dashboard?month=${encodeURIComponent(state.month)}`);
+      state.members = data.members;
+      state.expenses = data.expenses;
+      state.totals = data.totals;
+      render();
+    }
+
+    function render() {
+      renderMemberButtons();
+      renderMembersAdmin();
+      renderTotals();
+      renderExpenses();
+      updateCalc();
+      $("monthFilter").value = state.month;
+      $("summaryText").textContent = `${state.expenses.length} despesas cadastradas · total ${currency.format(state.expenses.reduce((sum, item) => sum + item.amount, 0))}`;
+    }
+
+    function renderMemberButtons() {
+      $("memberButtons").innerHTML = state.members
+        .filter((member) => member.active)
+        .map((member) => `<button type="button" class="member-toggle ${state.selected.has(member.id) ? "active" : ""}" data-member="${member.id}">${member.name}</button>`)
+        .join("");
+    }
+
+    function renderMembersAdmin() {
+      $("membersAdmin").innerHTML = state.members.map((member) => `
+        <span class="pill">${member.name}</span>
+      `).join("");
+    }
+
+    function renderTotals() {
+      $("totals").innerHTML = [
+        `<div class="total-card"><span class="muted">Total geral</span><strong>${currency.format(state.expenses.reduce((sum, item) => sum + item.amount, 0))}</strong></div>`,
+        ...state.members.map((member) => `
+          <div class="total-card">
+            <span class="muted">${member.name}</span>
+            <strong>${currency.format(state.totals[member.id] || 0)}</strong>
+          </div>
+        `)
+      ].join("");
+    }
+
+    function renderExpenses() {
+      if (!state.expenses.length) {
+        $("expenseList").innerHTML = `<div class="expense"><p class="muted">Nenhuma despesa neste mês.</p></div>`;
+        return;
+      }
+      $("expenseList").innerHTML = state.expenses.map((expense) => {
+        const memberMap = Object.fromEntries(state.members.map((m) => [m.id, m.name]));
+        const shares = Object.entries(expense.shares).map(([memberId, value]) => `
+          <div class="share"><span>${memberMap[memberId] || "Sócio"}</span><span>${currency.format(value)}</span></div>
+        `).join("");
+        return `
+          <article class="expense">
+            <div class="expense-head">
+              <div>
+                <div class="expense-title">${escapeHtml(expense.name)}</div>
+                <div class="muted">${formatDate(expense.date)} · ${expense.participant_count} participantes</div>
+              </div>
+              <span class="pill">${currency.format(expense.amount)}</span>
+            </div>
+            <div class="shares">${shares}</div>
+            ${expense.notes ? `<p class="muted">${escapeHtml(expense.notes)}</p>` : ""}
+            <div class="expense-actions">
+              <button class="secondary" type="button" data-edit="${expense.id}">Editar</button>
+              <button class="danger" type="button" data-delete="${expense.id}">Excluir</button>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function updateCalc() {
+      const amount = parseMoney($("expenseAmount").value);
+      const count = state.selected.size;
+      $("calcCount").textContent = String(count);
+      $("calcShare").textContent = currency.format(count ? amount / count : 0);
+      renderMemberButtons();
+    }
+
+    function resetForm() {
+      $("editingId").value = "";
+      $("formTitle").textContent = "Nova despesa";
+      $("saveBtn").textContent = "Salvar despesa";
+      $("expenseForm").reset();
+      $("expenseDate").value = new Date().toISOString().slice(0, 10);
+      state.selected = new Set(state.members.filter((m) => m.active).map((m) => m.id));
+      updateCalc();
+    }
+
+    function editExpense(id) {
+      const expense = state.expenses.find((item) => item.id === id);
+      if (!expense) return;
+      $("editingId").value = expense.id;
+      $("formTitle").textContent = "Editar despesa";
+      $("saveBtn").textContent = "Atualizar despesa";
+      $("expenseName").value = expense.name;
+      $("expenseAmount").value = String(expense.amount.toFixed(2)).replace(".", ",");
+      $("expenseDate").value = expense.date;
+      $("expenseNotes").value = expense.notes || "";
+      state.selected = new Set(expense.participants);
+      updateCalc();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function deleteExpense(id) {
+      if (!confirm("Excluir esta despesa?")) return;
+      const data = await api(`/api/expenses/${id}`, { method: "DELETE" });
+      applyDashboard(data);
+      showToast("Despesa excluída.");
+    }
+
+    function applyDashboard(data) {
+      state.members = data.members;
+      state.expenses = data.expenses;
+      state.totals = data.totals;
+      render();
+    }
+
+    function formatDate(value) {
+      if (!value) return "";
+      const [year, month, day] = value.split("-");
+      return `${day}/${month}/${year}`;
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+    }
+
+    $("memberButtons").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-member]");
+      if (!button) return;
+      const memberId = button.dataset.member;
+      if (state.selected.has(memberId)) state.selected.delete(memberId);
+      else state.selected.add(memberId);
+      updateCalc();
+    });
+
+    $("expenseAmount").addEventListener("input", updateCalc);
+
+    $("expenseForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const editingId = $("editingId").value;
+      const payload = {
+        name: $("expenseName").value,
+        amount: $("expenseAmount").value,
+        date: $("expenseDate").value,
+        participants: [...state.selected],
+        notes: $("expenseNotes").value
+      };
+      const data = await api(editingId ? `/api/expenses/${editingId}` : "/api/expenses", {
+        method: editingId ? "PATCH" : "POST",
+        body: JSON.stringify(payload)
+      });
+      applyDashboard(data);
+      resetForm();
+      showToast(editingId ? "Despesa atualizada." : "Despesa cadastrada.");
+    });
+
+    $("clearBtn").addEventListener("click", resetForm);
+
+    $("memberForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const name = $("memberName").value.trim();
+      if (!name) return;
+      const data = await api("/api/members", { method: "POST", body: JSON.stringify({ name }) });
+      $("memberName").value = "";
+      applyDashboard(data);
+      state.selected.add(data.members[data.members.length - 1].id);
+      updateCalc();
+      showToast("Sócio adicionado.");
+    });
+
+    $("expenseList").addEventListener("click", (event) => {
+      const edit = event.target.closest("[data-edit]");
+      const del = event.target.closest("[data-delete]");
+      if (edit) editExpense(edit.dataset.edit);
+      if (del) deleteExpense(del.dataset.delete);
+    });
+
+    $("monthFilter").addEventListener("change", async () => {
+      state.month = $("monthFilter").value || new Date().toISOString().slice(0, 7);
+      await load();
+    });
+
+    $("exportBtn").addEventListener("click", () => {
+      window.location.href = `/api/export.csv?month=${encodeURIComponent(state.month)}`;
+    });
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+    }
+
+    $("expenseDate").value = new Date().toISOString().slice(0, 10);
+    $("monthFilter").value = state.month;
+    load().then(resetForm).catch((error) => showToast(error.message));
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: atelier-inove-financeiro
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app --bind 0.0.0.0:$PORT
+    disk:
+      name: dados-financeiro
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
