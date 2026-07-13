@@ -217,6 +217,44 @@
       flex: 1;
     }
 
+    .templates {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-height: 148px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .template-btn {
+      min-height: 32px;
+      padding: 0 10px;
+      background: #fffdf8;
+      color: var(--gold-2);
+      border: 1px solid rgba(183, 125, 24, .28);
+      font-size: 12px;
+      max-width: 100%;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1.3fr repeat(3, minmax(120px, .7fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .report-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .report-actions button {
+      flex: 1;
+      min-width: 140px;
+    }
+
     .topbar {
       display: flex;
       align-items: end;
@@ -241,6 +279,50 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 12px;
+    }
+
+    .detail-panel {
+      display: none;
+      margin-bottom: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .detail-panel.open {
+      display: block;
+    }
+
+    .detail-scroll {
+      overflow: auto;
+      max-height: 420px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 780px;
+      font-size: 13px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #eee5d8;
+      padding: 9px 10px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f6efe2;
+      color: #5d4314;
+      z-index: 1;
+    }
+
+    td.money, th.money {
+      text-align: right;
     }
 
     .list {
@@ -350,10 +432,12 @@
       .layout { grid-template-columns: 1fr; }
       .topbar { align-items: stretch; flex-direction: column; }
       .topbar label { max-width: none; }
+      .filters { grid-template-columns: 1fr 1fr; }
     }
 
     @media (max-width: 480px) {
       .two, .calc { grid-template-columns: 1fr; }
+      .filters { grid-template-columns: 1fr; }
       .member-buttons { grid-template-columns: 1fr; }
       header { align-items: flex-start; }
       .logo { width: 50px; height: 50px; }
@@ -377,7 +461,12 @@
           <input type="hidden" id="editingId">
           <label>
             Despesa
-            <input id="expenseName" placeholder="Ex: Aluguel, Urgtec, Café" autocomplete="off" required>
+            <input id="expenseName" list="expenseTemplates" placeholder="Ex: Aluguel, Urgtec, Café" autocomplete="off" required>
+            <datalist id="expenseTemplates"></datalist>
+          </label>
+          <label>
+            Despesas cadastradas sem valor
+            <div class="templates" id="templateButtons"></div>
           </label>
           <div class="two">
             <label>
@@ -407,6 +496,9 @@
             Observações
             <textarea id="expenseNotes" placeholder="Opcional"></textarea>
           </label>
+          <label>
+            <span><input id="expensePaid" type="checkbox" style="width:auto;min-height:auto;margin-right:8px">Despesa paga</span>
+          </label>
           <div class="actions">
             <button type="submit" id="saveBtn">Salvar despesa</button>
             <button type="button" class="secondary" id="clearBtn">Limpar</button>
@@ -433,7 +525,41 @@
               Mês
               <input type="month" id="monthFilter">
             </label>
+            <button class="secondary" id="allMonthsBtn" type="button">Todos os meses</button>
+            <button class="secondary" id="currentMonthBtn" type="button">Mês atual</button>
             <button class="secondary" id="exportBtn" type="button">Exportar CSV</button>
+          </div>
+        </div>
+        <div class="filters">
+          <label>
+            Buscar despesa
+            <input id="searchFilter" placeholder="Lupa: aluguel, Urgtec, café">
+          </label>
+          <label>
+            Buscar data
+            <input id="dateFilter" type="date">
+          </label>
+          <label>
+            Sócio
+            <select id="memberFilter"></select>
+          </label>
+          <label>
+            Status
+            <select id="statusFilter">
+              <option value="">Todos</option>
+              <option value="open">Em aberto</option>
+              <option value="paid">Pago</option>
+            </select>
+          </label>
+        </div>
+        <div class="report-actions">
+          <button class="secondary" id="detailsBtn" type="button">Detalhado</button>
+          <button class="secondary" id="totalsBtn" type="button">Totais de todos os sócios</button>
+          <button class="secondary" id="clearFiltersBtn" type="button">Limpar filtros</button>
+        </div>
+        <div class="detail-panel" id="detailPanel">
+          <div class="detail-scroll">
+            <table id="detailTable"></table>
           </div>
         </div>
         <div class="totals" id="totals"></div>
@@ -449,8 +575,16 @@
       members: [],
       expenses: [],
       totals: {},
+      templates: [],
       selected: new Set(),
-      month: new Date().toISOString().slice(0, 7)
+      month: new Date().toISOString().slice(0, 7),
+      detailsOpen: false,
+      filters: {
+        query: "",
+        date: "",
+        member: "",
+        status: ""
+      }
     };
 
     const $ = (id) => document.getElementById(id);
@@ -484,17 +618,24 @@
       state.members = data.members;
       state.expenses = data.expenses;
       state.totals = data.totals;
+      state.templates = data.templates || [];
       render();
     }
 
     function render() {
+      const expenses = filteredExpenses();
       renderMemberButtons();
       renderMembersAdmin();
-      renderTotals();
-      renderExpenses();
+      renderTemplates();
+      renderFilters();
+      renderTotals(expenses);
+      renderDetails(expenses);
+      renderExpenses(expenses);
       updateCalc();
       $("monthFilter").value = state.month;
-      $("summaryText").textContent = `${state.expenses.length} despesas cadastradas · total ${currency.format(state.expenses.reduce((sum, item) => sum + item.amount, 0))}`;
+      const total = expenses.reduce((sum, item) => sum + item.amount, 0);
+      const scope = state.month ? `no mês ${state.month.split("-").reverse().join("/")}` : "em todos os meses";
+      $("summaryText").textContent = `${expenses.length} despesas exibidas ${scope} · total ${currency.format(total)}`;
     }
 
     function renderMemberButtons() {
@@ -510,24 +651,92 @@
       `).join("");
     }
 
-    function renderTotals() {
+    function renderTemplates() {
+      $("expenseTemplates").innerHTML = state.templates.map((name) => `<option value="${escapeHtml(name)}"></option>`).join("");
+      $("templateButtons").innerHTML = state.templates.map((name) => `
+        <button class="template-btn" type="button" data-template="${escapeHtml(name)}">${escapeHtml(name)}</button>
+      `).join("");
+    }
+
+    function renderFilters() {
+      $("memberFilter").innerHTML = [
+        `<option value="">Todos</option>`,
+        ...state.members.map((member) => `<option value="${member.id}" ${state.filters.member === member.id ? "selected" : ""}>${member.name}</option>`)
+      ].join("");
+      $("searchFilter").value = state.filters.query;
+      $("dateFilter").value = state.filters.date;
+      $("statusFilter").value = state.filters.status;
+    }
+
+    function totalsFor(expenses) {
+      const totals = Object.fromEntries(state.members.map((member) => [member.id, 0]));
+      for (const expense of expenses) {
+        for (const [memberId, value] of Object.entries(expense.shares || {})) {
+          totals[memberId] = Math.round(((totals[memberId] || 0) + value) * 100) / 100;
+        }
+      }
+      return totals;
+    }
+
+    function filteredExpenses() {
+      const query = normalize(state.filters.query);
+      return state.expenses.filter((expense) => {
+        if (query && !normalize(`${expense.name} ${expense.notes || ""}`).includes(query)) return false;
+        if (state.filters.date && expense.date !== state.filters.date) return false;
+        if (state.filters.member && !expense.participants.includes(state.filters.member)) return false;
+        if (state.filters.status === "paid" && !expense.paid) return false;
+        if (state.filters.status === "open" && expense.paid) return false;
+        return true;
+      });
+    }
+
+    function renderTotals(expenses) {
+      const totals = totalsFor(expenses);
       $("totals").innerHTML = [
-        `<div class="total-card"><span class="muted">Total geral</span><strong>${currency.format(state.expenses.reduce((sum, item) => sum + item.amount, 0))}</strong></div>`,
+        `<div class="total-card"><span class="muted">Total geral</span><strong>${currency.format(expenses.reduce((sum, item) => sum + item.amount, 0))}</strong></div>`,
         ...state.members.map((member) => `
           <div class="total-card">
             <span class="muted">${member.name}</span>
-            <strong>${currency.format(state.totals[member.id] || 0)}</strong>
+            <strong>${currency.format(totals[member.id] || 0)}</strong>
           </div>
         `)
       ].join("");
     }
 
-    function renderExpenses() {
-      if (!state.expenses.length) {
-        $("expenseList").innerHTML = `<div class="expense"><p class="muted">Nenhuma despesa neste mês.</p></div>`;
+    function renderDetails(expenses) {
+      $("detailPanel").classList.toggle("open", state.detailsOpen);
+      const totals = totalsFor(expenses);
+      const header = `
+        <tr>
+          <th>Data</th>
+          <th>Despesa</th>
+          <th class="money">Valor</th>
+          ${state.members.map((member) => `<th class="money">${member.name}</th>`).join("")}
+        </tr>
+      `;
+      const rows = expenses.map((expense) => `
+        <tr>
+          <td>${formatDate(expense.date)}</td>
+          <td>${escapeHtml(expense.name)}</td>
+          <td class="money">${currency.format(expense.amount)}</td>
+          ${state.members.map((member) => `<td class="money">${expense.shares[member.id] ? currency.format(expense.shares[member.id]) : "-"}</td>`).join("")}
+        </tr>
+      `).join("");
+      const footer = `
+        <tr>
+          <th colspan="3">Total por sócio</th>
+          ${state.members.map((member) => `<th class="money">${currency.format(totals[member.id] || 0)}</th>`).join("")}
+        </tr>
+      `;
+      $("detailTable").innerHTML = `<thead>${header}</thead><tbody>${rows || `<tr><td colspan="${state.members.length + 3}">Nenhuma despesa nos filtros atuais.</td></tr>`}</tbody><tfoot>${footer}</tfoot>`;
+    }
+
+    function renderExpenses(expenses) {
+      if (!expenses.length) {
+        $("expenseList").innerHTML = `<div class="expense"><p class="muted">Nenhuma despesa encontrada nos filtros atuais.</p></div>`;
         return;
       }
-      $("expenseList").innerHTML = state.expenses.map((expense) => {
+      $("expenseList").innerHTML = expenses.map((expense) => {
         const memberMap = Object.fromEntries(state.members.map((m) => [m.id, m.name]));
         const shares = Object.entries(expense.shares).map(([memberId, value]) => `
           <div class="share"><span>${memberMap[memberId] || "Sócio"}</span><span>${currency.format(value)}</span></div>
@@ -580,6 +789,7 @@
       $("expenseAmount").value = String(expense.amount.toFixed(2)).replace(".", ",");
       $("expenseDate").value = expense.date;
       $("expenseNotes").value = expense.notes || "";
+      $("expensePaid").checked = Boolean(expense.paid);
       state.selected = new Set(expense.participants);
       updateCalc();
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -596,7 +806,16 @@
       state.members = data.members;
       state.expenses = data.expenses;
       state.totals = data.totals;
+      state.templates = data.templates || state.templates;
       render();
+    }
+
+    function normalize(text) {
+      return String(text || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
     }
 
     function formatDate(value) {
@@ -628,7 +847,8 @@
         amount: $("expenseAmount").value,
         date: $("expenseDate").value,
         participants: [...state.selected],
-        notes: $("expenseNotes").value
+        notes: $("expenseNotes").value,
+        paid: $("expensePaid").checked
       };
       const data = await api(editingId ? `/api/expenses/${editingId}` : "/api/expenses", {
         method: editingId ? "PATCH" : "POST",
@@ -640,6 +860,13 @@
     });
 
     $("clearBtn").addEventListener("click", resetForm);
+
+    $("templateButtons").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-template]");
+      if (!button) return;
+      $("expenseName").value = button.dataset.template;
+      $("expenseAmount").focus();
+    });
 
     $("memberForm").addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -661,9 +888,51 @@
     });
 
     $("monthFilter").addEventListener("change", async () => {
-      state.month = $("monthFilter").value || new Date().toISOString().slice(0, 7);
+      state.month = $("monthFilter").value;
       await load();
     });
+
+    $("allMonthsBtn").addEventListener("click", async () => {
+      state.month = "";
+      await load();
+    });
+
+    $("currentMonthBtn").addEventListener("click", async () => {
+      state.month = new Date().toISOString().slice(0, 7);
+      await load();
+    });
+
+    $("detailsBtn").addEventListener("click", () => {
+      state.detailsOpen = !state.detailsOpen;
+      render();
+    });
+
+    $("totalsBtn").addEventListener("click", () => {
+      $("totals").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    $("clearFiltersBtn").addEventListener("click", async () => {
+      state.filters = { query: "", date: "", member: "", status: "" };
+      state.month = new Date().toISOString().slice(0, 7);
+      await load();
+    });
+
+    for (const id of ["searchFilter", "dateFilter", "memberFilter", "statusFilter"]) {
+      $(id).addEventListener("input", () => {
+        state.filters.query = $("searchFilter").value;
+        state.filters.date = $("dateFilter").value;
+        state.filters.member = $("memberFilter").value;
+        state.filters.status = $("statusFilter").value;
+        render();
+      });
+      $(id).addEventListener("change", () => {
+        state.filters.query = $("searchFilter").value;
+        state.filters.date = $("dateFilter").value;
+        state.filters.member = $("memberFilter").value;
+        state.filters.status = $("statusFilter").value;
+        render();
+      });
+    }
 
     $("exportBtn").addEventListener("click", () => {
       window.location.href = `/api/export.csv?month=${encodeURIComponent(state.month)}`;

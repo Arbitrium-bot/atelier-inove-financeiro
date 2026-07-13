@@ -28,6 +28,38 @@ DEFAULT_EXPENSES = [
     ("Luz", "1788.00", ["Lucas", "Débora", "André", "Helen"], ""),
 ]
 
+DEFAULT_TEMPLATES = [
+    "Academia",
+    "Admin",
+    "Água",
+    "Aluguel",
+    "Ar-condicionado",
+    "Assessoria",
+    "Banana",
+    "Café",
+    "Cartão",
+    "Comissão",
+    "Correio",
+    "Dental",
+    "Embalagem",
+    "Emax / Acrílico / Zirconia",
+    "Forno",
+    "Gás",
+    "Impressora",
+    "Lalomere",
+    "Laundry",
+    "Livros",
+    "Luz",
+    "Manoel",
+    "Mercado",
+    "Passivo",
+    "Raylane",
+    "Scanner",
+    "Solução manual",
+    "Terreno",
+    "Urgtec",
+]
+
 
 def money(value):
     text = str(value or "0").strip()
@@ -75,9 +107,22 @@ def load_db():
                     "updated_at": now_iso(),
                 }
             )
-        save_db({"members": members, "expenses": expenses})
+        save_db({"members": members, "expenses": expenses, "templates": DEFAULT_TEMPLATES})
     with DB_PATH.open("r", encoding="utf-8") as fh:
-        return json.load(fh)
+        data = json.load(fh)
+    changed = False
+    if "templates" not in data:
+        data["templates"] = DEFAULT_TEMPLATES
+        changed = True
+    else:
+        current = {item.casefold() for item in data["templates"]}
+        for item in DEFAULT_TEMPLATES:
+            if item.casefold() not in current:
+                data["templates"].append(item)
+                changed = True
+    if changed:
+        save_db(data)
+    return data
 
 
 def save_db(data):
@@ -131,7 +176,17 @@ def dashboard(data, month=None):
         "totals": totals,
         "grand_total": round(sum(e["amount"] for e in expenses), 2),
         "month": month,
+        "templates": sorted(data.get("templates", []), key=str.casefold),
     }
+
+
+def remember_template(data, name):
+    cleaned = str(name or "").strip()
+    if not cleaned:
+        return
+    existing = {item.casefold() for item in data.setdefault("templates", [])}
+    if cleaned.casefold() not in existing:
+        data["templates"].append(cleaned)
 
 
 @app.get("/")
@@ -205,6 +260,7 @@ def create_expense():
         "updated_at": now_iso(),
     }
     data["expenses"].append(expense)
+    remember_template(data, name)
     save_db(data)
     return jsonify(dashboard(data))
 
@@ -228,6 +284,7 @@ def update_expense(expense_id):
         expense["participants"] = participants
     if "paid" in payload:
         expense["paid"] = bool(payload["paid"])
+    remember_template(data, expense["name"])
     expense["updated_at"] = now_iso()
     save_db(data)
     return jsonify(dashboard(data))
