@@ -79,6 +79,11 @@
       padding: 12px 0 22px;
     }
 
+    .header-copy {
+      flex: 1;
+      min-width: 0;
+    }
+
     .logo {
       width: 58px;
       height: 58px;
@@ -102,6 +107,24 @@
       color: var(--muted);
       margin-top: 6px;
       line-height: 1.35;
+    }
+
+    .sound-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-width: 132px;
+      background: #fffdf8;
+      color: var(--gold-2);
+      border: 1px solid rgba(201, 147, 45, .44);
+      box-shadow: 0 10px 28px rgba(45, 34, 18, .08);
+    }
+
+    .sound-button.playing {
+      background: linear-gradient(180deg, #f3c46b, var(--gold));
+      color: #1f1608;
+      border-color: transparent;
     }
 
     .layout {
@@ -355,8 +378,9 @@
     @media (max-width: 480px) {
       .two, .calc { grid-template-columns: 1fr; }
       .member-buttons { grid-template-columns: 1fr; }
-      header { align-items: flex-start; }
+      header { align-items: flex-start; flex-wrap: wrap; }
       .logo { width: 50px; height: 50px; }
+      .sound-button { width: 100%; }
     }
   </style>
 </head>
@@ -364,10 +388,11 @@
   <div class="app">
     <header>
       <img class="logo" src="/logo-inove.png" alt="Atelier Inove">
-      <div>
+      <div class="header-copy">
         <h1>Financeiro Atelier Inove</h1>
         <p class="subtitle">Despesas compartilhadas, divisão automática e totais por sócio.</p>
       </div>
+      <button class="sound-button" id="introAudioBtn" type="button" aria-label="Ouvir audio de abertura">Ouvir abertura</button>
     </header>
 
     <main class="layout">
@@ -442,6 +467,7 @@
     </main>
   </div>
 
+  <audio id="introAudio" src="/abertura-financeiro.mp3" preload="auto"></audio>
   <div class="toast" id="toast"></div>
 
   <script>
@@ -609,6 +635,32 @@
       return String(text).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
     }
 
+    function initIntroAudio() {
+      const audio = $("introAudio");
+      const button = $("introAudioBtn");
+      if (!audio || !button) return;
+
+      const setPlaying = (playing) => {
+        button.classList.toggle("playing", playing);
+        button.textContent = playing ? "Tocando" : "Ouvir abertura";
+      };
+
+      const playIntro = async () => {
+        try {
+          audio.currentTime = 0;
+          await audio.play();
+          setPlaying(true);
+        } catch {
+          setPlaying(false);
+        }
+      };
+
+      button.addEventListener("click", playIntro);
+      audio.addEventListener("ended", () => setPlaying(false));
+      audio.addEventListener("pause", () => setPlaying(false));
+      playIntro();
+    }
+
     $("memberButtons").addEventListener("click", (event) => {
       const button = event.target.closest("[data-member]");
       if (!button) return;
@@ -675,6 +727,7 @@
 
     $("expenseDate").value = new Date().toISOString().slice(0, 10);
     $("monthFilter").value = state.month;
+    initIntroAudio();
     load().then(resetForm).catch((error) => showToast(error.message));
   </script>
 </body>
