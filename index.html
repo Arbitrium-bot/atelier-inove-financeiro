@@ -3,948 +3,347 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#c9932d">
+  <meta name="theme-color" content="#166b5f">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
-  <title>Atelier Inove Financeiro</title>
+  <title>DivideBem</title>
   <style>
     :root {
-      --bg: #f6f4ef;
+      --bg: #f5f7f4;
       --panel: #ffffff;
-      --panel-2: #fbf8f1;
-      --line: #ddd5c6;
-      --gold: #b77d18;
-      --gold-2: #8a5a0a;
-      --text: #1f1b16;
-      --muted: #756b5d;
-      --danger: #bc3535;
-      --ok: #248a58;
-      --input: #fffdf8;
+      --line: #dfe7dd;
+      --text: #17211d;
+      --muted: #64746e;
+      --brand: #166b5f;
+      --brand-2: #19a186;
+      --accent: #f0b84b;
+      --danger: #c24141;
+      --soft: #eef7f2;
+      --shadow: 0 18px 60px rgba(22, 107, 95, .12);
       color-scheme: light;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-
     * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      background: linear-gradient(180deg, #fffaf0 0%, var(--bg) 320px);
-      color: var(--text);
-      min-height: 100vh;
-    }
-
-    button, input, textarea, select {
-      font: inherit;
-    }
-
-    button {
-      border: 0;
-      border-radius: 8px;
-      background: var(--gold);
-      color: #171108;
-      font-weight: 750;
-      min-height: 42px;
-      padding: 0 14px;
-      cursor: pointer;
-    }
-
-    button.secondary {
-      background: #fffdf8;
-      color: var(--text);
-      border: 1px solid var(--line);
-    }
-
-    button.danger {
-      background: transparent;
-      color: var(--danger);
-      border: 1px solid rgba(232, 97, 97, .35);
-    }
-
-    button.ghost {
-      background: transparent;
-      color: var(--gold-2);
-      border: 1px solid rgba(201, 147, 45, .4);
-    }
-
-    .app {
-      width: min(1180px, 100%);
-      margin: 0 auto;
-      padding: 18px;
-    }
-
-    header {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 12px 0 22px;
-    }
-
-    .logo {
-      width: 58px;
-      height: 58px;
-      object-fit: contain;
-      border-radius: 14px;
-      background: #111;
-      border: 1px solid rgba(183, 125, 24, .32);
-    }
-
-    h1, h2, h3, p {
-      margin: 0;
-    }
-
-    h1 {
-      font-size: clamp(24px, 5vw, 42px);
-      line-height: 1;
-      letter-spacing: 0;
-    }
-
-    .subtitle {
-      color: var(--muted);
-      margin-top: 6px;
-      line-height: 1.35;
-    }
-
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(320px, 410px) 1fr;
-      gap: 18px;
-      align-items: start;
-    }
-
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 16px;
-      box-shadow: 0 18px 50px rgba(45, 34, 18, .1);
-    }
-
-    .panel h2 {
-      font-size: 17px;
-      margin-bottom: 14px;
-    }
-
-    .form-grid {
-      display: grid;
-      gap: 12px;
-    }
-
-    label {
-      display: grid;
-      gap: 7px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 650;
-    }
-
-    input, textarea, select {
-      width: 100%;
-      border: 1px solid var(--line);
-      background: var(--input);
-      color: var(--text);
-      border-radius: 8px;
-      min-height: 44px;
-      padding: 10px 12px;
-      outline: none;
-    }
-
-    textarea {
-      min-height: 78px;
-      resize: vertical;
-    }
-
-    input:focus, textarea:focus, select:focus {
-      border-color: var(--gold);
-      box-shadow: 0 0 0 3px rgba(201, 147, 45, .16);
-    }
-
-    .two {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .member-buttons {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .member-toggle {
-      min-height: 46px;
-      background: #fffdf8;
-      color: var(--text);
-      border: 1px solid var(--line);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .member-toggle.active {
-      background: linear-gradient(180deg, #f3c46b, var(--gold));
-      color: #1f1608;
-      border-color: transparent;
-    }
-
-    .calc {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      background: var(--panel-2);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 12px;
-    }
-
-    .calc strong, .total-card strong {
-      display: block;
-      font-size: 20px;
-      margin-top: 4px;
-    }
-
-    .muted {
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .actions button {
-      flex: 1;
-    }
-
-    .templates {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      max-height: 148px;
-      overflow: auto;
-      padding-right: 2px;
-    }
-
-    .template-btn {
-      min-height: 32px;
-      padding: 0 10px;
-      background: #fffdf8;
-      color: var(--gold-2);
-      border: 1px solid rgba(183, 125, 24, .28);
-      font-size: 12px;
-      max-width: 100%;
-    }
-
-    .filters {
-      display: grid;
-      grid-template-columns: 1.3fr repeat(3, minmax(120px, .7fr));
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .report-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 14px;
-    }
-
-    .report-actions button {
-      flex: 1;
-      min-width: 140px;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: end;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-
-    .topbar label {
-      max-width: 210px;
-    }
-
-    .totals {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .total-card {
-      background: var(--panel-2);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 12px;
-    }
-
-    .detail-panel {
-      display: none;
-      margin-bottom: 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      overflow: hidden;
-      background: #fff;
-    }
-
-    .detail-panel.open {
-      display: block;
-    }
-
-    .detail-scroll {
-      overflow: auto;
-      max-height: 420px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 780px;
-      font-size: 13px;
-    }
-
-    th, td {
-      border-bottom: 1px solid #eee5d8;
-      padding: 9px 10px;
-      text-align: left;
-      white-space: nowrap;
-    }
-
-    th {
-      position: sticky;
-      top: 0;
-      background: #f6efe2;
-      color: #5d4314;
-      z-index: 1;
-    }
-
-    td.money, th.money {
-      text-align: right;
-    }
-
-    .list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .expense {
-      background: #ffffff;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 12px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .expense-head {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: flex-start;
-    }
-
-    .expense-title {
-      font-weight: 800;
-      font-size: 16px;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      min-height: 26px;
-      border-radius: 999px;
-      padding: 0 9px;
-      background: rgba(201, 147, 45, .14);
-      color: var(--gold-2);
-      border: 1px solid rgba(201, 147, 45, .25);
-      font-size: 12px;
-      font-weight: 750;
-    }
-
-    .shares {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-      gap: 8px;
-    }
-
-    .share {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      background: #fbf8f1;
-      border: 1px solid #e5dccb;
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 13px;
-    }
-
-    .share span:last-child {
-      color: var(--gold-2);
-      font-weight: 800;
-    }
-
-    .expense-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .expense-actions button {
-      min-height: 34px;
-      padding: 0 10px;
-      font-size: 13px;
-    }
-
-    .members-admin {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      background: #1f1b16;
-      color: #fffaf0;
-      border-radius: 8px;
-      padding: 12px 16px;
-      font-weight: 750;
-      box-shadow: 0 20px 60px rgba(0,0,0,.45);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .2s ease, transform .2s ease;
-      z-index: 10;
-    }
-
-    .toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(-6px);
-    }
-
-    @media (max-width: 860px) {
-      .app { padding: 14px; }
-      .layout { grid-template-columns: 1fr; }
-      .topbar { align-items: stretch; flex-direction: column; }
-      .topbar label { max-width: none; }
-      .filters { grid-template-columns: 1fr 1fr; }
-    }
-
-    @media (max-width: 480px) {
-      .two, .calc { grid-template-columns: 1fr; }
-      .filters { grid-template-columns: 1fr; }
-      .member-buttons { grid-template-columns: 1fr; }
-      header { align-items: flex-start; }
-      .logo { width: 50px; height: 50px; }
-    }
+    body { margin: 0; background: linear-gradient(180deg, #e9f7f2 0, var(--bg) 340px); color: var(--text); }
+    button, input, select, textarea { font: inherit; }
+    button { border: 0; border-radius: 8px; min-height: 42px; padding: 0 14px; font-weight: 800; background: var(--brand); color: white; cursor: pointer; }
+    button.secondary { background: white; color: var(--brand); border: 1px solid #bcd7cf; }
+    button.ghost { background: var(--soft); color: var(--brand); }
+    button.danger { background: transparent; color: var(--danger); border: 1px solid rgba(194,65,65,.32); }
+    input, select, textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; min-height: 44px; padding: 10px 12px; background: white; color: var(--text); outline: none; }
+    textarea { min-height: 76px; resize: vertical; }
+    input:focus, select:focus, textarea:focus { border-color: var(--brand-2); box-shadow: 0 0 0 3px rgba(25,161,134,.14); }
+    label { display: grid; gap: 7px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    h1, h2, h3, p { margin: 0; }
+    .app { width: min(1240px, 100%); margin: 0 auto; padding: 18px; }
+    header { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; padding: 8px 0 18px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .mark { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: white; font-size: 26px; font-weight: 950; box-shadow: var(--shadow); }
+    h1 { font-size: clamp(30px, 6vw, 56px); line-height: .92; letter-spacing: 0; }
+    .subtitle { color: var(--muted); margin-top: 6px; line-height: 1.35; }
+    .profile-mini { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.75); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+    .avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: var(--soft); display: grid; place-items: center; color: var(--brand); font-weight: 900; overflow: hidden; }
+    .layout { display: grid; grid-template-columns: 390px 1fr; gap: 16px; align-items: start; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; box-shadow: var(--shadow); }
+    .panel h2 { font-size: 18px; margin-bottom: 14px; }
+    .grid { display: grid; gap: 12px; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .actions button { flex: 1; }
+    .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .tabs button { background: white; color: var(--muted); border: 1px solid var(--line); }
+    .tabs button.active { background: var(--brand); color: white; border-color: var(--brand); }
+    .tab { display: none; }
+    .tab.active { display: grid; gap: 12px; }
+    .chips, .people, .templates { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { min-height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid #cfe1dc; background: white; color: var(--brand); font-size: 12px; font-weight: 800; }
+    .person { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: white; color: var(--text); min-height: 48px; justify-content: flex-start; }
+    .person.active { background: var(--soft); border-color: var(--brand-2); color: var(--brand); }
+    .person img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
+    .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+    .card { background: white; border: 1px solid var(--line); border-radius: 8px; padding: 13px; }
+    .card strong { display: block; font-size: 22px; margin-top: 5px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .filters { display: grid; grid-template-columns: 1.25fr repeat(5, minmax(110px, .75fr)); gap: 10px; margin-bottom: 12px; }
+    .list { display: grid; gap: 10px; }
+    .expense { border: 1px solid var(--line); border-radius: 8px; background: white; padding: 13px; display: grid; gap: 10px; }
+    .expense-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+    .expense-title { font-size: 16px; font-weight: 900; }
+    .pill { display: inline-flex; align-items: center; min-height: 26px; padding: 0 9px; border-radius: 999px; background: var(--soft); color: var(--brand); font-size: 12px; font-weight: 850; }
+    .shares { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+    .share { display: flex; justify-content: space-between; gap: 8px; background: #fafcf9; border: 1px solid #edf2ec; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+    .share span:last-child { font-weight: 900; color: var(--brand); }
+    .detail { display: none; overflow: auto; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; background: white; }
+    .detail.open { display: block; }
+    table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 9px 10px; border-bottom: 1px solid #edf2ec; text-align: left; white-space: nowrap; }
+    th { background: var(--soft); color: var(--brand); position: sticky; top: 0; }
+    .money { text-align: right; }
+    .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--text); color: white; border-radius: 8px; padding: 12px 16px; opacity: 0; pointer-events: none; transition: .2s; z-index: 10; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(-5px); }
+    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .summary { grid-template-columns: repeat(2, 1fr); } .filters { grid-template-columns: 1fr 1fr; } header { grid-template-columns: 1fr; } }
+    @media (max-width: 540px) { .app { padding: 12px; } .two, .three, .summary, .filters { grid-template-columns: 1fr; } .tabs { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <div class="app">
     <header>
-      <img class="logo" src="/logo-inove.png" alt="Atelier Inove">
-      <div>
-        <h1>Financeiro Atelier Inove</h1>
-        <p class="subtitle">Despesas compartilhadas, divisão automática e totais por sócio.</p>
+      <div class="brand">
+        <div class="mark">Db</div>
+        <div>
+          <h1>DivideBem</h1>
+          <p class="subtitle">Contas claras em casa e no trabalho. Cadastre, escolha quem participa e mande o resumo sem planilha.</p>
+        </div>
+      </div>
+      <div class="profile-mini">
+        <div class="avatar" id="profileAvatar">Eu</div>
+        <div><strong id="profileNameView">Seu perfil</strong><p class="muted">PWA pronto para Android</p></div>
       </div>
     </header>
-
     <main class="layout">
       <section class="panel">
-        <h2 id="formTitle">Nova despesa</h2>
-        <form class="form-grid" id="expenseForm">
-          <input type="hidden" id="editingId">
-          <label>
-            Despesa
-            <input id="expenseName" list="expenseTemplates" placeholder="Ex: Aluguel, Urgtec, Café" autocomplete="off" required>
-            <datalist id="expenseTemplates"></datalist>
-          </label>
-          <label>
-            Despesas cadastradas sem valor
-            <div class="templates" id="templateButtons"></div>
-          </label>
-          <div class="two">
-            <label>
-              Valor
-              <input id="expenseAmount" inputmode="decimal" placeholder="3500,00" required>
-            </label>
-            <label>
-              Data
-              <input id="expenseDate" type="date" required>
-            </label>
-          </div>
-          <label>
-            Quem participa da despesa
-            <div class="member-buttons" id="memberButtons"></div>
-          </label>
-          <div class="calc">
-            <div>
-              <span class="muted">Participantes</span>
-              <strong id="calcCount">0</strong>
-            </div>
-            <div>
-              <span class="muted">Valor por sócio</span>
-              <strong id="calcShare">R$ 0,00</strong>
-            </div>
-          </div>
-          <label>
-            Observações
-            <textarea id="expenseNotes" placeholder="Opcional"></textarea>
-          </label>
-          <label>
-            <span><input id="expensePaid" type="checkbox" style="width:auto;min-height:auto;margin-right:8px">Despesa paga</span>
-          </label>
-          <div class="actions">
-            <button type="submit" id="saveBtn">Salvar despesa</button>
-            <button type="button" class="secondary" id="clearBtn">Limpar</button>
-          </div>
-        </form>
+        <div class="tabs">
+          <button class="active" data-tab="expenseTab" type="button">Despesa</button>
+          <button data-tab="peopleTab" type="button">Pessoas</button>
+          <button data-tab="profileTab" type="button">Perfil</button>
+        </div>
 
-        <div style="height: 18px"></div>
-        <h2>Sócios</h2>
-        <form class="actions" id="memberForm">
-          <input id="memberName" placeholder="Novo sócio" autocomplete="off">
-          <button type="submit" class="ghost">Adicionar</button>
-        </form>
-        <div class="members-admin" id="membersAdmin"></div>
+        <div class="tab active" id="expenseTab">
+          <h2 id="formTitle">Nova despesa</h2>
+          <form class="grid" id="expenseForm">
+            <input type="hidden" id="editingId">
+            <label>Grupo<select id="groupId"></select></label>
+            <label>Despesa<input id="expenseName" list="expenseTemplates" placeholder="Ex: Aluguel, Mercado, Luz" required><datalist id="expenseTemplates"></datalist></label>
+            <div class="templates" id="templateButtons"></div>
+            <div class="two">
+              <label>Categoria<select id="category"></select></label>
+              <label>Valor<input id="amount" inputmode="decimal" placeholder="350,00" required></label>
+            </div>
+            <div class="two">
+              <label>Data<input id="date" type="date" required></label>
+              <label>Vencimento<input id="dueDate" type="date"></label>
+            </div>
+            <div class="two">
+              <label>Quem pagou<select id="paidBy"></select></label>
+              <label>Divisão<select id="splitMode"><option value="equal">Igual entre selecionados</option><option value="percent">Por porcentagem/peso</option><option value="manual">Valor manual por pessoa</option></select></label>
+            </div>
+            <label>Quem participa<div class="people" id="participantButtons"></div></label>
+            <div class="grid" id="customShares"></div>
+            <div class="two">
+              <label>Status<select id="status"><option value="open">Em aberto</option><option value="paid">Pago</option><option value="received">Recebido</option></select></label>
+              <label><span><input id="recurring" type="checkbox" style="width:auto;min-height:auto;margin-right:8px">Despesa recorrente</span></label>
+            </div>
+            <label>Comprovante/foto<input id="receipt" type="file" accept="image/*"></label>
+            <label>Observações<textarea id="notes" placeholder="Opcional"></textarea></label>
+            <div class="actions"><button id="saveBtn" type="submit">Salvar despesa</button><button class="secondary" id="clearBtn" type="button">Limpar</button></div>
+          </form>
+        </div>
+
+        <div class="tab" id="peopleTab">
+          <h2>Participantes</h2>
+          <form class="grid" id="memberForm">
+            <input type="hidden" id="memberPhotoData">
+            <label>Nome<input id="memberName" placeholder="Nome da pessoa"></label>
+            <label>WhatsApp opcional<input id="memberPhone" placeholder="(00) 00000-0000"></label>
+            <label>Foto<input id="memberPhoto" type="file" accept="image/*"></label>
+            <button type="submit">Adicionar participante</button>
+          </form>
+          <div class="people" id="membersList"></div>
+          <h2>Novo grupo</h2>
+          <form class="grid" id="groupForm">
+            <label>Nome do grupo<input id="groupName" placeholder="Casa, República, Trabalho"></label>
+            <label>Tipo<select id="groupKind"><option value="home">Casa</option><option value="work">Trabalho</option><option value="trip">Viagem</option><option value="mixed">Misto</option></select></label>
+            <button class="secondary" type="submit">Criar grupo</button>
+          </form>
+        </div>
+
+        <div class="tab" id="profileTab">
+          <h2>Perfil</h2>
+          <form class="grid" id="profileForm">
+            <input type="hidden" id="profilePhotoData">
+            <label>Seu nome<input id="profileName" placeholder="Seu nome"></label>
+            <label>WhatsApp opcional<input id="profilePhone" placeholder="(00) 00000-0000"></label>
+            <label>Foto de perfil<input id="profilePhoto" type="file" accept="image/*"></label>
+            <button type="submit">Salvar perfil</button>
+          </form>
+          <p class="muted">Diferencial do DivideBem: grupos simples, fotos das pessoas, modelos prontos, resumo de acerto e uso tanto em casa quanto no trabalho.</p>
+        </div>
       </section>
 
       <section class="panel">
-        <div class="topbar">
-          <div>
-            <h2>Resumo do mês</h2>
-            <p class="muted" id="summaryText">Carregando...</p>
-          </div>
-          <div class="actions">
-            <label>
-              Mês
-              <input type="month" id="monthFilter">
-            </label>
-            <button class="secondary" id="allMonthsBtn" type="button">Todos os meses</button>
-            <button class="secondary" id="currentMonthBtn" type="button">Mês atual</button>
-            <button class="secondary" id="exportBtn" type="button">Exportar CSV</button>
-          </div>
-        </div>
+        <div class="summary" id="summary"></div>
         <div class="filters">
-          <label>
-            Buscar despesa
-            <input id="searchFilter" placeholder="Lupa: aluguel, Urgtec, café">
-          </label>
-          <label>
-            Buscar data
-            <input id="dateFilter" type="date">
-          </label>
-          <label>
-            Sócio
-            <select id="memberFilter"></select>
-          </label>
-          <label>
-            Status
-            <select id="statusFilter">
-              <option value="">Todos</option>
-              <option value="open">Em aberto</option>
-              <option value="paid">Pago</option>
-            </select>
-          </label>
+          <label>Buscar<input id="q" placeholder="Lupa: aluguel, mercado, café"></label>
+          <label>Mês<input id="month" type="month"></label>
+          <label>Data<input id="filterDate" type="date"></label>
+          <label>Grupo<select id="filterGroup"></select></label>
+          <label>Pessoa<select id="filterMember"></select></label>
+          <label>Status<select id="filterStatus"><option value="">Todos</option><option value="open">Em aberto</option><option value="paid">Pago</option><option value="received">Recebido</option></select></label>
         </div>
-        <div class="report-actions">
-          <button class="secondary" id="detailsBtn" type="button">Detalhado</button>
-          <button class="secondary" id="totalsBtn" type="button">Totais de todos os sócios</button>
-          <button class="secondary" id="clearFiltersBtn" type="button">Limpar filtros</button>
+        <div class="actions" style="margin-bottom:12px">
+          <button class="secondary" id="detailBtn" type="button">Detalhado</button>
+          <button class="secondary" id="whatsappBtn" type="button">Resumo WhatsApp</button>
+          <button class="secondary" id="exportBtn" type="button">Exportar CSV</button>
+          <button class="ghost" id="clearFilters" type="button">Limpar filtros</button>
         </div>
-        <div class="detail-panel" id="detailPanel">
-          <div class="detail-scroll">
-            <table id="detailTable"></table>
-          </div>
-        </div>
-        <div class="totals" id="totals"></div>
+        <div class="detail" id="detailBox"><table id="detailTable"></table></div>
         <div class="list" id="expenseList"></div>
       </section>
     </main>
   </div>
-
   <div class="toast" id="toast"></div>
-
   <script>
-    const state = {
-      members: [],
-      expenses: [],
-      totals: {},
-      templates: [],
-      selected: new Set(),
-      month: new Date().toISOString().slice(0, 7),
-      detailsOpen: false,
-      filters: {
-        query: "",
-        date: "",
-        member: "",
-        status: ""
-      }
-    };
-
     const $ = (id) => document.getElementById(id);
-    const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+    const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+    const state = { data: null, selected: new Set(), filters: { month: new Date().toISOString().slice(0,7), q: "", date: "", group: "", member: "", status: "" }, detail: false, receipt: "" };
 
-    function parseMoney(value) {
-      const cleaned = String(value || "0").replace(/\./g, "").replace(",", ".");
-      const number = Number.parseFloat(cleaned);
-      return Number.isFinite(number) ? number : 0;
-    }
-
-    function showToast(message) {
-      $("toast").textContent = message;
-      $("toast").classList.add("show");
-      clearTimeout(showToast.timer);
-      showToast.timer = setTimeout(() => $("toast").classList.remove("show"), 2200);
-    }
-
-    async function api(path, options = {}) {
-      const response = await fetch(path, {
-        ...options,
-        headers: { "Content-Type": "application/json", ...(options.headers || {}) }
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Não foi possível salvar.");
-      return data;
-    }
+    const toast = (msg) => { $("toast").textContent = msg; $("toast").classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => $("toast").classList.remove("show"), 2200); };
+    const api = async (url, options={}) => { const r = await fetch(url, { ...options, headers: { "Content-Type": "application/json", ...(options.headers||{}) }}); const d = await r.json(); if(!r.ok) throw new Error(d.error || "Erro ao salvar"); return d; };
+    const readFile = (input, cb) => { const file = input.files?.[0]; if(!file) return; const reader = new FileReader(); reader.onload = () => cb(reader.result); reader.readAsDataURL(file); };
+    const parseMoney = (v) => Number.parseFloat(String(v||"0").replace(/\./g,"").replace(",",".")) || 0;
+    const today = () => new Date().toISOString().slice(0,10);
+    const memberMap = () => Object.fromEntries(state.data.members.map(m => [m.id, m]));
 
     async function load() {
-      const data = await api(`/api/dashboard?month=${encodeURIComponent(state.month)}`);
-      state.members = data.members;
-      state.expenses = data.expenses;
-      state.totals = data.totals;
-      state.templates = data.templates || [];
+      const p = new URLSearchParams();
+      if (state.filters.month) p.set("month", state.filters.month);
+      if (state.filters.q) p.set("q", state.filters.q);
+      if (state.filters.date) p.set("date", state.filters.date);
+      if (state.filters.group) p.set("group", state.filters.group);
+      if (state.filters.member) p.set("member", state.filters.member);
+      if (state.filters.status) p.set("status", state.filters.status);
+      state.data = await api(`/api/dashboard?${p}`);
       render();
     }
 
     function render() {
-      const expenses = filteredExpenses();
-      renderMemberButtons();
-      renderMembersAdmin();
-      renderTemplates();
-      renderFilters();
-      renderTotals(expenses);
-      renderDetails(expenses);
-      renderExpenses(expenses);
-      updateCalc();
-      $("monthFilter").value = state.month;
-      const total = expenses.reduce((sum, item) => sum + item.amount, 0);
-      const scope = state.month ? `no mês ${state.month.split("-").reverse().join("/")}` : "em todos os meses";
-      $("summaryText").textContent = `${expenses.length} despesas exibidas ${scope} · total ${currency.format(total)}`;
+      renderProfile();
+      renderOptions();
+      renderPeople();
+      renderShares();
+      renderSummary();
+      renderDetails();
+      renderExpenses();
     }
 
-    function renderMemberButtons() {
-      $("memberButtons").innerHTML = state.members
-        .filter((member) => member.active)
-        .map((member) => `<button type="button" class="member-toggle ${state.selected.has(member.id) ? "active" : ""}" data-member="${member.id}">${member.name}</button>`)
-        .join("");
+    function renderProfile() {
+      const p = state.data.profile || {};
+      $("profileNameView").textContent = p.name || "Seu perfil";
+      $("profileName").value = p.name || "";
+      $("profilePhone").value = p.phone || "";
+      $("profileAvatar").innerHTML = p.photo ? `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover">` : "Eu";
     }
 
-    function renderMembersAdmin() {
-      $("membersAdmin").innerHTML = state.members.map((member) => `
-        <span class="pill">${member.name}</span>
-      `).join("");
+    function renderOptions() {
+      const groups = state.data.groups;
+      const groupOptions = groups.map(g => `<option value="${g.id}">${g.name}</option>`).join("");
+      $("groupId").innerHTML = groupOptions;
+      $("filterGroup").innerHTML = `<option value="">Todos</option>${groupOptions}`;
+      $("filterGroup").value = state.filters.group;
+      $("category").innerHTML = state.data.categories.map(c => `<option>${c}</option>`).join("");
+      $("expenseTemplates").innerHTML = state.data.templates.map(t => `<option value="${t}"></option>`).join("");
+      $("templateButtons").innerHTML = state.data.templates.slice(0, 18).map(t => `<button class="chip" type="button" data-template="${t}">${t}</button>`).join("");
+      const peopleOpts = state.data.members.map(m => `<option value="${m.id}">${m.name}</option>`).join("");
+      $("paidBy").innerHTML = `<option value="">Ninguém ainda</option>${peopleOpts}`;
+      $("filterMember").innerHTML = `<option value="">Todos</option>${peopleOpts}`;
+      $("filterMember").value = state.filters.member;
+      $("month").value = state.filters.month;
+      $("filterDate").value = state.filters.date;
+      $("q").value = state.filters.q;
+      $("filterStatus").value = state.filters.status;
     }
 
-    function renderTemplates() {
-      $("expenseTemplates").innerHTML = state.templates.map((name) => `<option value="${escapeHtml(name)}"></option>`).join("");
-      $("templateButtons").innerHTML = state.templates.map((name) => `
-        <button class="template-btn" type="button" data-template="${escapeHtml(name)}">${escapeHtml(name)}</button>
-      `).join("");
+    function renderPeople() {
+      const mm = memberMap();
+      $("participantButtons").innerHTML = state.data.members.filter(m => m.active).map(m => `<button class="person ${state.selected.has(m.id) ? "active" : ""}" type="button" data-participant="${m.id}">${m.photo ? `<img src="${m.photo}">` : `<span class="avatar" style="width:30px;height:30px">${m.name[0]}</span>`}<span>${m.name}</span></button>`).join("");
+      $("membersList").innerHTML = state.data.members.map(m => `<div class="person">${m.photo ? `<img src="${m.photo}">` : `<span class="avatar" style="width:30px;height:30px">${m.name[0]}</span>`}<span>${m.name}</span><span class="muted">${m.phone || ""}</span></div>`).join("");
     }
 
-    function renderFilters() {
-      $("memberFilter").innerHTML = [
-        `<option value="">Todos</option>`,
-        ...state.members.map((member) => `<option value="${member.id}" ${state.filters.member === member.id ? "selected" : ""}>${member.name}</option>`)
-      ].join("");
-      $("searchFilter").value = state.filters.query;
-      $("dateFilter").value = state.filters.date;
-      $("statusFilter").value = state.filters.status;
-    }
-
-    function totalsFor(expenses) {
-      const totals = Object.fromEntries(state.members.map((member) => [member.id, 0]));
-      for (const expense of expenses) {
-        for (const [memberId, value] of Object.entries(expense.shares || {})) {
-          totals[memberId] = Math.round(((totals[memberId] || 0) + value) * 100) / 100;
-        }
-      }
-      return totals;
-    }
-
-    function filteredExpenses() {
-      const query = normalize(state.filters.query);
-      return state.expenses.filter((expense) => {
-        if (query && !normalize(`${expense.name} ${expense.notes || ""}`).includes(query)) return false;
-        if (state.filters.date && expense.date !== state.filters.date) return false;
-        if (state.filters.member && !expense.participants.includes(state.filters.member)) return false;
-        if (state.filters.status === "paid" && !expense.paid) return false;
-        if (state.filters.status === "open" && expense.paid) return false;
-        return true;
-      });
-    }
-
-    function renderTotals(expenses) {
-      const totals = totalsFor(expenses);
-      $("totals").innerHTML = [
-        `<div class="total-card"><span class="muted">Total geral</span><strong>${currency.format(expenses.reduce((sum, item) => sum + item.amount, 0))}</strong></div>`,
-        ...state.members.map((member) => `
-          <div class="total-card">
-            <span class="muted">${member.name}</span>
-            <strong>${currency.format(totals[member.id] || 0)}</strong>
-          </div>
-        `)
-      ].join("");
-    }
-
-    function renderDetails(expenses) {
-      $("detailPanel").classList.toggle("open", state.detailsOpen);
-      const totals = totalsFor(expenses);
-      const header = `
-        <tr>
-          <th>Data</th>
-          <th>Despesa</th>
-          <th class="money">Valor</th>
-          ${state.members.map((member) => `<th class="money">${member.name}</th>`).join("")}
-        </tr>
-      `;
-      const rows = expenses.map((expense) => `
-        <tr>
-          <td>${formatDate(expense.date)}</td>
-          <td>${escapeHtml(expense.name)}</td>
-          <td class="money">${currency.format(expense.amount)}</td>
-          ${state.members.map((member) => `<td class="money">${expense.shares[member.id] ? currency.format(expense.shares[member.id]) : "-"}</td>`).join("")}
-        </tr>
-      `).join("");
-      const footer = `
-        <tr>
-          <th colspan="3">Total por sócio</th>
-          ${state.members.map((member) => `<th class="money">${currency.format(totals[member.id] || 0)}</th>`).join("")}
-        </tr>
-      `;
-      $("detailTable").innerHTML = `<thead>${header}</thead><tbody>${rows || `<tr><td colspan="${state.members.length + 3}">Nenhuma despesa nos filtros atuais.</td></tr>`}</tbody><tfoot>${footer}</tfoot>`;
-    }
-
-    function renderExpenses(expenses) {
-      if (!expenses.length) {
-        $("expenseList").innerHTML = `<div class="expense"><p class="muted">Nenhuma despesa encontrada nos filtros atuais.</p></div>`;
+    function renderShares() {
+      const mode = $("splitMode").value;
+      const amount = parseMoney($("amount").value);
+      if (mode === "equal") {
+        $("customShares").innerHTML = `<div class="card"><span class="muted">Valor por pessoa</span><strong>${money.format(state.selected.size ? amount / state.selected.size : 0)}</strong></div>`;
         return;
       }
-      $("expenseList").innerHTML = expenses.map((expense) => {
-        const memberMap = Object.fromEntries(state.members.map((m) => [m.id, m.name]));
-        const shares = Object.entries(expense.shares).map(([memberId, value]) => `
-          <div class="share"><span>${memberMap[memberId] || "Sócio"}</span><span>${currency.format(value)}</span></div>
-        `).join("");
-        return `
-          <article class="expense">
-            <div class="expense-head">
-              <div>
-                <div class="expense-title">${escapeHtml(expense.name)}</div>
-                <div class="muted">${formatDate(expense.date)} · ${expense.participant_count} participantes</div>
-              </div>
-              <span class="pill">${currency.format(expense.amount)}</span>
-            </div>
-            <div class="shares">${shares}</div>
-            ${expense.notes ? `<p class="muted">${escapeHtml(expense.notes)}</p>` : ""}
-            <div class="expense-actions">
-              <button class="secondary" type="button" data-edit="${expense.id}">Editar</button>
-              <button class="danger" type="button" data-delete="${expense.id}">Excluir</button>
-            </div>
-          </article>
-        `;
+      $("customShares").innerHTML = [...state.selected].map(id => {
+        const m = memberMap()[id];
+        const label = mode === "percent" ? "Peso ou %" : "Valor";
+        return `<label>${m?.name || "Pessoa"} · ${label}<input data-share="${id}" inputmode="decimal" placeholder="${mode === "percent" ? "1" : "0,00"}"></label>`;
       }).join("");
     }
 
-    function updateCalc() {
-      const amount = parseMoney($("expenseAmount").value);
-      const count = state.selected.size;
-      $("calcCount").textContent = String(count);
-      $("calcShare").textContent = currency.format(count ? amount / count : 0);
-      renderMemberButtons();
+    function renderSummary() {
+      const d = state.data;
+      const open = d.expenses.filter(e => e.status === "open").reduce((s,e) => s + e.amount, 0);
+      const positive = Object.values(d.balances).filter(v => v > 0).reduce((s,v) => s + v, 0);
+      $("summary").innerHTML = `
+        <div class="card"><span class="muted">Total lançado</span><strong>${money.format(d.grand_total)}</strong></div>
+        <div class="card"><span class="muted">Em aberto</span><strong>${money.format(open)}</strong></div>
+        <div class="card"><span class="muted">Pessoas</span><strong>${d.members.length}</strong></div>
+        <div class="card"><span class="muted">A acertar</span><strong>${money.format(positive)}</strong></div>`;
+    }
+
+    function renderDetails() {
+      $("detailBox").classList.toggle("open", state.detail);
+      const d = state.data, mm = memberMap();
+      const head = `<tr><th>Data</th><th>Despesa</th><th>Categoria</th><th class="money">Valor</th>${d.members.map(m=>`<th class="money">${m.name}</th>`).join("")}</tr>`;
+      const rows = d.expenses.map(e => `<tr><td>${formatDate(e.date)}</td><td>${e.name}</td><td>${e.category}</td><td class="money">${money.format(e.amount)}</td>${d.members.map(m=>`<td class="money">${e.shares[m.id] ? money.format(e.shares[m.id]) : "-"}</td>`).join("")}</tr>`).join("");
+      $("detailTable").innerHTML = `<thead>${head}</thead><tbody>${rows || `<tr><td colspan="${d.members.length+4}">Nenhuma despesa encontrada.</td></tr>`}</tbody></table>`;
+    }
+
+    function renderExpenses() {
+      const mm = memberMap();
+      $("expenseList").innerHTML = state.data.expenses.map(e => {
+        const shares = Object.entries(e.shares).map(([id,v]) => `<div class="share"><span>${mm[id]?.name || "Pessoa"}</span><span>${money.format(v)}</span></div>`).join("");
+        return `<article class="expense">
+          <div class="expense-head"><div><div class="expense-title">${escapeHtml(e.name)}</div><p class="muted">${formatDate(e.date)} · ${e.category} · ${e.participant_count} pessoas</p></div><span class="pill">${money.format(e.amount)}</span></div>
+          <div class="shares">${shares}</div>
+          ${e.receipt ? `<img src="${e.receipt}" style="max-width:150px;border-radius:8px;border:1px solid var(--line)">` : ""}
+          ${e.notes ? `<p class="muted">${escapeHtml(e.notes)}</p>` : ""}
+          <div class="actions"><button class="secondary" data-edit="${e.id}" type="button">Editar</button><button class="danger" data-delete="${e.id}" type="button">Excluir</button></div>
+        </article>`;
+      }).join("") || `<div class="expense"><p class="muted">Nenhuma despesa ainda. Use um modelo pronto e comece em segundos.</p></div>`;
     }
 
     function resetForm() {
-      $("editingId").value = "";
-      $("formTitle").textContent = "Nova despesa";
-      $("saveBtn").textContent = "Salvar despesa";
-      $("expenseForm").reset();
-      $("expenseDate").value = new Date().toISOString().slice(0, 10);
-      state.selected = new Set(state.members.filter((m) => m.active).map((m) => m.id));
-      updateCalc();
+      $("expenseForm").reset(); $("editingId").value = ""; $("date").value = today(); state.receipt = ""; state.selected = new Set(state.data.members.map(m => m.id)); render();
     }
+    function formatDate(v) { if(!v) return ""; const [y,m,d]=v.split("-"); return `${d}/${m}/${y}`; }
+    function escapeHtml(t) { return String(t||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
 
-    function editExpense(id) {
-      const expense = state.expenses.find((item) => item.id === id);
-      if (!expense) return;
-      $("editingId").value = expense.id;
-      $("formTitle").textContent = "Editar despesa";
-      $("saveBtn").textContent = "Atualizar despesa";
-      $("expenseName").value = expense.name;
-      $("expenseAmount").value = String(expense.amount.toFixed(2)).replace(".", ",");
-      $("expenseDate").value = expense.date;
-      $("expenseNotes").value = expense.notes || "";
-      $("expensePaid").checked = Boolean(expense.paid);
-      state.selected = new Set(expense.participants);
-      updateCalc();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    document.querySelectorAll("[data-tab]").forEach(btn => btn.onclick = () => { document.querySelectorAll("[data-tab],.tab").forEach(x=>x.classList.remove("active")); btn.classList.add("active"); $(btn.dataset.tab).classList.add("active"); });
+    $("participantButtons").onclick = (e) => { const b=e.target.closest("[data-participant]"); if(!b) return; state.selected.has(b.dataset.participant) ? state.selected.delete(b.dataset.participant) : state.selected.add(b.dataset.participant); renderPeople(); renderShares(); };
+    $("templateButtons").onclick = (e) => { const b=e.target.closest("[data-template]"); if(b) { $("expenseName").value = b.dataset.template; $("amount").focus(); } };
+    $("amount").oninput = renderShares; $("splitMode").onchange = renderShares;
+    $("receipt").onchange = () => readFile($("receipt"), v => state.receipt = v);
+    $("memberPhoto").onchange = () => readFile($("memberPhoto"), v => $("memberPhotoData").value = v);
+    $("profilePhoto").onchange = () => readFile($("profilePhoto"), v => $("profilePhotoData").value = v);
 
-    async function deleteExpense(id) {
-      if (!confirm("Excluir esta despesa?")) return;
-      const data = await api(`/api/expenses/${id}`, { method: "DELETE" });
-      applyDashboard(data);
-      showToast("Despesa excluída.");
-    }
-
-    function applyDashboard(data) {
-      state.members = data.members;
-      state.expenses = data.expenses;
-      state.totals = data.totals;
-      state.templates = data.templates || state.templates;
-      render();
-    }
-
-    function normalize(text) {
-      return String(text || "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase()
-        .trim();
-    }
-
-    function formatDate(value) {
-      if (!value) return "";
-      const [year, month, day] = value.split("-");
-      return `${day}/${month}/${year}`;
-    }
-
-    function escapeHtml(text) {
-      return String(text).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
-    }
-
-    $("memberButtons").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-member]");
-      if (!button) return;
-      const memberId = button.dataset.member;
-      if (state.selected.has(memberId)) state.selected.delete(memberId);
-      else state.selected.add(memberId);
-      updateCalc();
-    });
-
-    $("expenseAmount").addEventListener("input", updateCalc);
-
-    $("expenseForm").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const editingId = $("editingId").value;
-      const payload = {
-        name: $("expenseName").value,
-        amount: $("expenseAmount").value,
-        date: $("expenseDate").value,
-        participants: [...state.selected],
-        notes: $("expenseNotes").value,
-        paid: $("expensePaid").checked
-      };
-      const data = await api(editingId ? `/api/expenses/${editingId}` : "/api/expenses", {
-        method: editingId ? "PATCH" : "POST",
-        body: JSON.stringify(payload)
-      });
-      applyDashboard(data);
-      resetForm();
-      showToast(editingId ? "Despesa atualizada." : "Despesa cadastrada.");
-    });
-
-    $("clearBtn").addEventListener("click", resetForm);
-
-    $("templateButtons").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-template]");
-      if (!button) return;
-      $("expenseName").value = button.dataset.template;
-      $("expenseAmount").focus();
-    });
-
-    $("memberForm").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const name = $("memberName").value.trim();
-      if (!name) return;
-      const data = await api("/api/members", { method: "POST", body: JSON.stringify({ name }) });
-      $("memberName").value = "";
-      applyDashboard(data);
-      state.selected.add(data.members[data.members.length - 1].id);
-      updateCalc();
-      showToast("Sócio adicionado.");
-    });
-
-    $("expenseList").addEventListener("click", (event) => {
-      const edit = event.target.closest("[data-edit]");
-      const del = event.target.closest("[data-delete]");
-      if (edit) editExpense(edit.dataset.edit);
-      if (del) deleteExpense(del.dataset.delete);
-    });
-
-    $("monthFilter").addEventListener("change", async () => {
-      state.month = $("monthFilter").value;
-      await load();
-    });
-
-    $("allMonthsBtn").addEventListener("click", async () => {
-      state.month = "";
-      await load();
-    });
-
-    $("currentMonthBtn").addEventListener("click", async () => {
-      state.month = new Date().toISOString().slice(0, 7);
-      await load();
-    });
-
-    $("detailsBtn").addEventListener("click", () => {
-      state.detailsOpen = !state.detailsOpen;
-      render();
-    });
-
-    $("totalsBtn").addEventListener("click", () => {
-      $("totals").scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-
-    $("clearFiltersBtn").addEventListener("click", async () => {
-      state.filters = { query: "", date: "", member: "", status: "" };
-      state.month = new Date().toISOString().slice(0, 7);
-      await load();
-    });
-
-    for (const id of ["searchFilter", "dateFilter", "memberFilter", "statusFilter"]) {
-      $(id).addEventListener("input", () => {
-        state.filters.query = $("searchFilter").value;
-        state.filters.date = $("dateFilter").value;
-        state.filters.member = $("memberFilter").value;
-        state.filters.status = $("statusFilter").value;
-        render();
-      });
-      $(id).addEventListener("change", () => {
-        state.filters.query = $("searchFilter").value;
-        state.filters.date = $("dateFilter").value;
-        state.filters.member = $("memberFilter").value;
-        state.filters.status = $("statusFilter").value;
-        render();
-      });
-    }
-
-    $("exportBtn").addEventListener("click", () => {
-      window.location.href = `/api/export.csv?month=${encodeURIComponent(state.month)}`;
-    });
-
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/service-worker.js").catch(() => {});
-    }
-
-    $("expenseDate").value = new Date().toISOString().slice(0, 10);
-    $("monthFilter").value = state.month;
-    load().then(resetForm).catch((error) => showToast(error.message));
+    $("expenseForm").onsubmit = async (e) => {
+      e.preventDefault();
+      const mode = $("splitMode").value, weights = {}, manual_shares = {};
+      document.querySelectorAll("[data-share]").forEach(input => mode === "percent" ? weights[input.dataset.share] = parseMoney(input.value || 1) : manual_shares[input.dataset.share] = parseMoney(input.value));
+      const payload = { group_id:$("groupId").value, name:$("expenseName").value, category:$("category").value, amount:$("amount").value, date:$("date").value, due_date:$("dueDate").value, paid_by:$("paidBy").value, participants:[...state.selected], split_mode:mode, weights, manual_shares, status:$("status").value, recurring:$("recurring").checked, receipt:state.receipt, notes:$("notes").value };
+      const id = $("editingId").value;
+      state.data = await api(id ? `/api/expenses/${id}` : "/api/expenses", { method: id ? "PATCH" : "POST", body: JSON.stringify(payload) });
+      resetForm(); toast("Despesa salva.");
+    };
+    $("memberForm").onsubmit = async (e) => { e.preventDefault(); state.data = await api("/api/members", { method:"POST", body: JSON.stringify({ name:$("memberName").value, phone:$("memberPhone").value, photo:$("memberPhotoData").value, group_id:$("groupId").value }) }); $("memberForm").reset(); $("memberPhotoData").value=""; resetForm(); toast("Participante adicionado."); };
+    $("groupForm").onsubmit = async (e) => { e.preventDefault(); state.data = await api("/api/groups", { method:"POST", body: JSON.stringify({ name:$("groupName").value, kind:$("groupKind").value }) }); $("groupForm").reset(); render(); toast("Grupo criado."); };
+    $("profileForm").onsubmit = async (e) => { e.preventDefault(); state.data = await api("/api/profile", { method:"PATCH", body: JSON.stringify({ name:$("profileName").value, phone:$("profilePhone").value, photo:$("profilePhotoData").value || state.data.profile.photo }) }); render(); toast("Perfil salvo."); };
+    $("expenseList").onclick = async (e) => { const del=e.target.closest("[data-delete]"); if(del && confirm("Excluir despesa?")) { state.data = await api(`/api/expenses/${del.dataset.delete}`, { method:"DELETE" }); render(); } };
+    ["q","month","filterDate","filterGroup","filterMember","filterStatus"].forEach(id => $(id).oninput = $(id).onchange = async () => { state.filters = { q:$("q").value, month:$("month").value, date:$("filterDate").value, group:$("filterGroup").value, member:$("filterMember").value, status:$("filterStatus").value }; await load(); });
+    $("detailBtn").onclick = () => { state.detail = !state.detail; renderDetails(); };
+    $("clearFilters").onclick = async () => { state.filters = { month: new Date().toISOString().slice(0,7), q:"", date:"", group:"", member:"", status:"" }; await load(); };
+    $("exportBtn").onclick = () => { const p = new URLSearchParams(state.filters); window.location.href = `/api/export.csv?${p}`; };
+    $("whatsappBtn").onclick = () => {
+      const lines = ["Resumo DivideBem", `Total: ${money.format(state.data.grand_total)}`, ...state.data.members.map(m => `${m.name}: deve ${money.format(state.data.totals[m.id]||0)} · saldo ${money.format(state.data.balances[m.id]||0)}`)];
+      window.open(`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`, "_blank");
+    };
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/service-worker.js").catch(()=>{});
+    $("date").value = today(); $("month").value = state.filters.month; load().then(resetForm).catch(err => toast(err.message));
   </script>
 </body>
 </html>

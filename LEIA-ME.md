@@ -1,6 +1,17 @@
-# Atelier Inove Financeiro
+# DivideBem
 
-Aplicativo interno para cadastrar despesas do laboratório e dividir automaticamente entre os sócios participantes.
+Aplicativo para dividir despesas de casa, república, família, viagens e pequenos times de trabalho.
+
+## Diferencial
+
+- Perfis e participantes com foto.
+- Grupos para casa, trabalho, viagem ou família.
+- Modelos prontos de despesas comuns.
+- Divisão igual, por peso/porcentagem ou valor manual.
+- Comprovante por foto.
+- Resumo de acerto para WhatsApp.
+- Relatório detalhado e exportação CSV.
+- PWA instalável no celular.
 
 ## Rodar local
 
@@ -11,14 +22,6 @@ python server.py
 
 Abra `http://127.0.0.1:8798`.
 
-## O que já faz
+## Play Store
 
-- Cadastro de sócios sem lista fixa.
-- Cadastro de despesas sem lista fixa.
-- Botões para escolher quem participa de cada despesa.
-- Divisão automática do valor entre os selecionados.
-- Totais por sócio no mês.
-- Histórico de despesas.
-- Editar, excluir e marcar como pago.
-- Exportar CSV.
-- PWA instalável no celular.
+Esta versão web/PWA é a base do produto. Para publicar na Play Store, empacote com Capacitor ou Trusted Web Activity, configure política de privacidade, ícones, screenshots, assinatura Android e o arquivo AAB.
