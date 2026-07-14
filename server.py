@@ -1,63 +1,32 @@
 import csv
-import hashlib
-import hmac
 import io
 import json
 import os
 import re
-import secrets
 import uuid
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
-from functools import wraps
 from pathlib import Path
 
-from flask import Flask, Response, jsonify, request, send_from_directory, session
+from flask import Flask, Response, jsonify, request, send_from_directory
 
 
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", APP_DIR / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-DB_PATH = DATA_DIR / "dividebem.json"
-USERS_PATH = DATA_DIR / "users.json"
-USER_DATA_DIR = DATA_DIR / "users"
-SECRET_PATH = DATA_DIR / "secret_key.txt"
-USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
+DB_PATH = DATA_DIR / "financeiro.json"
 
 app = Flask(__name__, static_folder=None)
-if os.environ.get("SECRET_KEY") or os.environ.get("FLASK_SECRET_KEY"):
-    app.secret_key = os.environ.get("SECRET_KEY") or os.environ.get("FLASK_SECRET_KEY")
-else:
-    if not SECRET_PATH.exists():
-        SECRET_PATH.write_text(secrets.token_hex(32), encoding="utf-8")
-    app.secret_key = SECRET_PATH.read_text(encoding="utf-8").strip()
 
 
-DEFAULT_TEMPLATES = [
-    "Aluguel", "Condomínio", "Luz", "Água", "Internet", "Gás", "Mercado",
-    "Feira", "Farmácia", "Limpeza", "Faxina", "Manutenção", "Transporte",
-    "Combustível", "Estacionamento", "Assinaturas", "Streaming", "Telefone",
-    "Seguro", "Imposto", "IPTU", "Material de escritório", "Café",
-    "Funcionário", "Prestador de serviço", "Escola", "Pet", "Lazer",
-    "Viagem", "Restaurante", "Presentes",
+DEFAULT_MEMBERS = ["Lucas", "Débora", "André", "Daniel", "Helen"]
+DEFAULT_EXPENSES = [
+    ("Aluguel", "3534.01", ["Lucas", "Débora", "André", "Helen"], "Exemplo vindo da divisão atual"),
+    ("Urgtec", "200.00", ["Lucas", "Débora", "André", "Daniel", "Helen"], "Sistema LabFácil/Urgtec"),
+    ("Café", "400.00", ["Lucas", "Débora", "André"], "Exemplo de compra compartilhada"),
+    ("Água", "161.00", ["Lucas", "Débora", "André", "Daniel", "Helen"], ""),
+    ("Luz", "1788.00", ["Lucas", "Débora", "André", "Helen"], ""),
 ]
-DEFAULT_CATEGORIES = [
-    "Moradia", "Contas fixas", "Mercado", "Trabalho", "Saúde", "Transporte",
-    "Assinaturas", "Manutenção", "Lazer", "Outros",
-]
-LEGACY_LAB_MEMBER_NAMES = {"Lucas", "Débora", "André", "Daniel", "Helen"}
-LEGACY_LAB_TEMPLATES = {
-    "Urgtec", "Dental", "Embalagem", "Laundry", "Scanner", "Terreno",
-    "Admin", "Comissão", "Correio", "Forno", "Lalomere",
-}
-
-
-def now_iso():
-    return datetime.now().replace(microsecond=0).isoformat()
-
-
-def new_id():
-    return uuid.uuid4().hex
 
 
 def money(value):
@@ -75,286 +44,93 @@ def as_float(value):
     return float(Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
 
-def norm(text):
-    return re.sub(r"\s+", " ", str(text or "").strip())
+def slug(text):
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-") or uuid.uuid4().hex[:8]
 
 
-def normalize_email(email):
-    return norm(email).casefold()
-
-
-def load_users():
-    if not USERS_PATH.exists():
-        save_users({"users": []})
-    with USERS_PATH.open("r", encoding="utf-8") as fh:
-        return json.load(fh)
-
-
-def save_users(data):
-    tmp = USERS_PATH.with_suffix(".tmp")
-    with tmp.open("w", encoding="utf-8") as fh:
-        json.dump(data, fh, ensure_ascii=False, indent=2)
-    tmp.replace(USERS_PATH)
-
-
-def hash_password(password, salt=None):
-    salt = salt or secrets.token_hex(16)
-    digest = hashlib.pbkdf2_hmac("sha256", str(password).encode("utf-8"), salt.encode("utf-8"), 220000)
-    return salt, digest.hex()
-
-
-def verify_password(password, salt, password_hash):
-    _, digest = hash_password(password, salt)
-    return hmac.compare_digest(digest, password_hash)
-
-
-def public_user(user):
-    return {"id": user["id"], "name": user.get("name", ""), "email": user.get("email", "")}
-
-
-def current_user():
-    user_id = session.get("user_id")
-    if not user_id:
-        return None
-    users = load_users()["users"]
-    return next((user for user in users if user["id"] == user_id), None)
-
-
-def login_required(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        if not current_user():
-            return jsonify({"error": "Faça login para continuar.", "auth_required": True}), 401
-        return fn(*args, **kwargs)
-    return wrapper
-
-
-def user_db_path(user_id):
-    return USER_DATA_DIR / f"{re.sub(r'[^a-zA-Z0-9_-]', '', user_id)}.json"
-
-
-def seed_db():
-    group_id = new_id()
-    members = []
-    return {
-        "app": {
-            "name": "DivideBem",
-            "tagline": "Contas claras em casa e no trabalho",
-            "seed_version": 5,
-        },
-        "profile": {
-            "name": "",
-            "phone": "",
-            "photo": "",
-            "created_at": now_iso(),
-        },
-        "groups": [{
-            "id": group_id,
-            "name": "Minha casa",
-            "kind": "home",
-            "member_ids": [],
-            "created_at": now_iso(),
-        }],
-        "members": members,
-        "expenses": [],
-        "templates": DEFAULT_TEMPLATES,
-        "categories": DEFAULT_CATEGORIES,
-    }
-
-
-def migrate(data):
-    changed = False
-    if "app" not in data:
-        data["app"] = {"name": "DivideBem", "tagline": "Contas claras em casa e no trabalho", "seed_version": 5}
-        changed = True
-    data["app"]["name"] = "DivideBem"
-    data["app"]["tagline"] = "Contas claras em casa e no trabalho"
-    data.setdefault("profile", {"name": "", "phone": "", "photo": "", "created_at": now_iso()})
-    data.setdefault("members", [])
-    data.setdefault("expenses", [])
-    data.setdefault("templates", [])
-    data.setdefault("categories", [])
-    if "groups" not in data:
-        group_id = new_id()
-        data["groups"] = [{
-            "id": group_id,
-            "name": "Minha casa",
-            "kind": "home",
-            "member_ids": [m["id"] for m in data["members"]],
-            "created_at": now_iso(),
-        }]
-        changed = True
-    if data["app"].get("seed_version", 1) < 5:
-        has_only_legacy_members = data.get("members") and {m.get("name") for m in data["members"]}.issubset(LEGACY_LAB_MEMBER_NAMES)
-        has_no_real_expenses = not data.get("expenses")
-        if has_only_legacy_members and has_no_real_expenses:
-            data["members"] = []
-            for group in data["groups"]:
-                group["member_ids"] = []
-                if group.get("name") == "Casa / Trabalho":
-                    group["name"] = "Minha casa"
-                    group["kind"] = "home"
-            changed = True
-        data["templates"] = [t for t in data.get("templates", []) if t not in LEGACY_LAB_TEMPLATES]
-        data["app"]["seed_version"] = 5
-        changed = True
-    for item in DEFAULT_TEMPLATES:
-        if item.casefold() not in {t.casefold() for t in data["templates"]}:
-            data["templates"].append(item)
-            changed = True
-    for item in DEFAULT_CATEGORIES:
-        if item.casefold() not in {c.casefold() for c in data["categories"]}:
-            data["categories"].append(item)
-            changed = True
-    for expense in data["expenses"]:
-        if "group_id" not in expense:
-            expense["group_id"] = data["groups"][0]["id"]
-            changed = True
-        expense.setdefault("category", "Outros")
-        expense.setdefault("paid_by", "")
-        expense.setdefault("status", "open")
-        expense.setdefault("split_mode", "equal")
-        expense.setdefault("weights", {})
-        expense.setdefault("manual_shares", {})
-        expense.setdefault("receipt", "")
-        expense.setdefault("recurring", False)
-    return changed
+def now_iso():
+    return datetime.now().replace(microsecond=0).isoformat()
 
 
 def load_db():
-    user = current_user()
-    path = user_db_path(user["id"]) if user else DB_PATH
-    if not path.exists():
-        data = seed_db()
-        if user:
-            data["profile"]["name"] = user.get("name", "")
-        save_db(data)
-        return data
-    with path.open("r", encoding="utf-8") as fh:
-        data = json.load(fh)
-    if migrate(data):
-        save_db(data)
-    return data
+    if not DB_PATH.exists():
+        today = date.today().isoformat()
+        members = [
+            {"id": slug(name), "name": name, "active": True, "created_at": now_iso()}
+            for name in DEFAULT_MEMBERS
+        ]
+        expenses = []
+        by_name = {m["name"]: m["id"] for m in members}
+        for name, amount, names, note in DEFAULT_EXPENSES:
+            expenses.append(
+                {
+                    "id": uuid.uuid4().hex,
+                    "name": name,
+                    "amount": as_float(money(amount)),
+                    "date": today,
+                    "participants": [by_name[n] for n in names if n in by_name],
+                    "notes": note,
+                    "paid": False,
+                    "created_at": now_iso(),
+                    "updated_at": now_iso(),
+                }
+            )
+        save_db({"members": members, "expenses": expenses})
+    with DB_PATH.open("r", encoding="utf-8") as fh:
+        return json.load(fh)
 
 
 def save_db(data):
-    user = current_user()
-    path = user_db_path(user["id"]) if user else DB_PATH
-    tmp = path.with_suffix(".tmp")
+    tmp = DB_PATH.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8") as fh:
         json.dump(data, fh, ensure_ascii=False, indent=2)
-    tmp.replace(path)
+    tmp.replace(DB_PATH)
 
 
-def by_id(items):
-    return {item["id"]: item for item in items}
-
-
-def remember(data, key, value):
-    value = norm(value)
-    if not value:
-        return
-    existing = {item.casefold() for item in data.setdefault(key, [])}
-    if value.casefold() not in existing:
-        data[key].append(value)
+def find_member(data, member_id):
+    return next((m for m in data["members"] if m["id"] == member_id), None)
 
 
 def expense_view(expense, members):
     participant_ids = [pid for pid in expense.get("participants", []) if pid in members]
     total = money(expense.get("amount"))
+    count = len(participant_ids)
+    base = (total / count).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if count else Decimal("0")
+    cents_total = int((total * 100).to_integral_value())
+    base_cents = cents_total // count if count else 0
+    remainder = cents_total - (base_cents * count)
     shares = {}
-    mode = expense.get("split_mode", "equal")
-    if participant_ids and mode == "manual":
-        assigned = Decimal("0")
-        for pid in participant_ids:
-            value = money(expense.get("manual_shares", {}).get(pid, 0))
-            shares[pid] = as_float(value)
-            assigned += value
-        diff = total - assigned
-        if diff and participant_ids:
-            shares[participant_ids[0]] = as_float(money(shares.get(participant_ids[0], 0)) + diff)
-    elif participant_ids and mode == "percent":
-        weights = expense.get("weights", {})
-        weight_sum = sum(Decimal(str(weights.get(pid, 0) or 0)) for pid in participant_ids)
-        if weight_sum <= 0:
-            weight_sum = Decimal(len(participant_ids))
-            weights = {pid: 1 for pid in participant_ids}
-        assigned = Decimal("0")
-        for index, pid in enumerate(participant_ids):
-            if index == len(participant_ids) - 1:
-                value = total - assigned
-            else:
-                value = (total * Decimal(str(weights.get(pid, 0))) / weight_sum).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                assigned += value
-            shares[pid] = as_float(value)
-    elif participant_ids:
-        cents_total = int((total * 100).to_integral_value())
-        base = cents_total // len(participant_ids)
-        remainder = cents_total - base * len(participant_ids)
-        for index, pid in enumerate(participant_ids):
-            shares[pid] = (base + (1 if index < remainder else 0)) / 100
+    for index, member_id in enumerate(participant_ids):
+        cents = base_cents + (1 if index < remainder else 0)
+        shares[member_id] = cents / 100
     return {
         **expense,
         "amount": as_float(total),
-        "participant_count": len(participant_ids),
+        "participant_count": count,
+        "share_amount": as_float(base),
         "shares": shares,
     }
 
 
-def filtered(expenses, args):
-    month = args.get("month")
-    query = norm(args.get("q")).casefold()
-    group_id = args.get("group")
-    member_id = args.get("member")
-    status = args.get("status")
-    category = args.get("category")
-    day = args.get("date")
-    out = []
-    for expense in expenses:
-        if month and not str(expense.get("date", "")).startswith(month):
-            continue
-        if group_id and expense.get("group_id") != group_id:
-            continue
-        if member_id and member_id not in expense.get("participants", []):
-            continue
-        if status and expense.get("status") != status:
-            continue
-        if category and expense.get("category") != category:
-            continue
-        if day and expense.get("date") != day:
-            continue
-        haystack = f"{expense.get('name', '')} {expense.get('notes', '')} {expense.get('category', '')}".casefold()
-        if query and query not in haystack:
-            continue
-        out.append(expense)
-    return out
+def month_filter(expenses, month):
+    if not month:
+        return expenses
+    return [e for e in expenses if str(e.get("date", "")).startswith(month)]
 
 
-def dashboard(data, args=None):
-    args = args or {}
-    members = by_id(data["members"])
-    expenses = [expense_view(e, members) for e in filtered(data["expenses"], args)]
-    expenses.sort(key=lambda e: (e.get("date", ""), e.get("created_at", "")), reverse=True)
+def dashboard(data, month=None):
+    members = {m["id"]: m for m in data["members"]}
+    expenses = [expense_view(e, members) for e in month_filter(data["expenses"], month)]
     totals = {m["id"]: 0 for m in data["members"]}
-    paid_by = {m["id"]: 0 for m in data["members"]}
     for expense in expenses:
-        if expense.get("paid_by") in paid_by:
-            paid_by[expense["paid_by"]] = round(paid_by[expense["paid_by"]] + expense["amount"], 2)
-        for pid, value in expense["shares"].items():
-            totals[pid] = round(totals.get(pid, 0) + value, 2)
-    balances = {pid: round(paid_by.get(pid, 0) - totals.get(pid, 0), 2) for pid in totals}
+        for member_id, value in expense["shares"].items():
+            totals[member_id] = round(totals.get(member_id, 0) + value, 2)
     return {
-        "app": data["app"],
-        "profile": data["profile"],
-        "groups": data["groups"],
         "members": data["members"],
-        "expenses": expenses,
-        "templates": sorted(data["templates"], key=str.casefold),
-        "categories": sorted(data["categories"], key=str.casefold),
+        "expenses": sorted(expenses, key=lambda e: (e.get("date", ""), e.get("created_at", "")), reverse=True),
         "totals": totals,
-        "paid_by": paid_by,
-        "balances": balances,
         "grand_total": round(sum(e["amount"] for e in expenses), 2),
+        "month": month,
     }
 
 
@@ -363,210 +139,101 @@ def index():
     return send_from_directory(APP_DIR, "index.html")
 
 
-@app.get("/privacy")
-def privacy():
-    return send_from_directory(APP_DIR, "privacy.html")
-
-
 @app.get("/<path:path>")
 def static_files(path):
     return send_from_directory(APP_DIR, path)
 
 
-@app.get("/api/auth/status")
-def auth_status():
-    user = current_user()
-    return jsonify({"authenticated": bool(user), "user": public_user(user) if user else None})
-
-
-@app.post("/api/auth/register")
-def auth_register():
-    payload = request.get_json(force=True)
-    name = norm(payload.get("name"))
-    email = normalize_email(payload.get("email"))
-    password = str(payload.get("password") or "")
-    if not name or not email or len(password) < 6:
-        return jsonify({"error": "Informe nome, e-mail e uma senha com pelo menos 6 caracteres."}), 400
-    users_db = load_users()
-    if any(user["email"] == email for user in users_db["users"]):
-        return jsonify({"error": "Este e-mail já está cadastrado."}), 409
-    salt, password_hash = hash_password(password)
-    user = {
-        "id": new_id(),
-        "name": name,
-        "email": email,
-        "password_salt": salt,
-        "password_hash": password_hash,
-        "created_at": now_iso(),
-    }
-    users_db["users"].append(user)
-    save_users(users_db)
-    session["user_id"] = user["id"]
-    data = seed_db()
-    data["profile"]["name"] = name
-    save_db(data)
-    return jsonify({"authenticated": True, "user": public_user(user), "dashboard": dashboard(data)})
-
-
-@app.post("/api/auth/login")
-def auth_login():
-    payload = request.get_json(force=True)
-    email = normalize_email(payload.get("email"))
-    password = str(payload.get("password") or "")
-    user = next((item for item in load_users()["users"] if item["email"] == email), None)
-    if not user or not verify_password(password, user.get("password_salt", ""), user.get("password_hash", "")):
-        return jsonify({"error": "E-mail ou senha inválidos."}), 401
-    session["user_id"] = user["id"]
-    return jsonify({"authenticated": True, "user": public_user(user), "dashboard": dashboard(load_db())})
-
-
-@app.post("/api/auth/logout")
-def auth_logout():
-    session.clear()
-    return jsonify({"authenticated": False})
-
-
 @app.get("/api/dashboard")
-@login_required
 def api_dashboard():
-    return jsonify(dashboard(load_db(), request.args))
-
-
-@app.patch("/api/profile")
-@login_required
-def update_profile():
-    data = load_db()
-    payload = request.get_json(force=True)
-    for key in ["name", "phone", "photo"]:
-        if key in payload:
-            data["profile"][key] = payload[key]
-    save_db(data)
-    return jsonify(dashboard(data, request.args))
-
-
-@app.post("/api/groups")
-@login_required
-def create_group():
-    data = load_db()
-    payload = request.get_json(force=True)
-    group = {
-        "id": new_id(),
-        "name": norm(payload.get("name")) or "Novo grupo",
-        "kind": payload.get("kind") or "home",
-        "member_ids": payload.get("member_ids") or [],
-        "created_at": now_iso(),
-    }
-    data["groups"].append(group)
-    save_db(data)
-    return jsonify(dashboard(data))
+    return jsonify(dashboard(load_db(), request.args.get("month")))
 
 
 @app.post("/api/members")
-@login_required
 def create_member():
     data = load_db()
     payload = request.get_json(force=True)
-    name = norm(payload.get("name"))
+    name = str(payload.get("name", "")).strip()
     if not name:
-        return jsonify({"error": "Nome do participante é obrigatório."}), 400
-    member = {
-        "id": new_id(),
-        "name": name,
-        "phone": norm(payload.get("phone")),
-        "photo": payload.get("photo", ""),
-        "active": True,
-        "created_at": now_iso(),
-    }
-    data["members"].append(member)
-    group_id = payload.get("group_id")
-    if group_id:
-        for group in data["groups"]:
-            if group["id"] == group_id and member["id"] not in group["member_ids"]:
-                group["member_ids"].append(member["id"])
+        return jsonify({"error": "Nome do sócio é obrigatório."}), 400
+    member_id = slug(name)
+    existing_ids = {m["id"] for m in data["members"]}
+    original = member_id
+    counter = 2
+    while member_id in existing_ids:
+        member_id = f"{original}-{counter}"
+        counter += 1
+    data["members"].append({"id": member_id, "name": name, "active": True, "created_at": now_iso()})
     save_db(data)
     return jsonify(dashboard(data))
 
 
 @app.patch("/api/members/<member_id>")
-@login_required
 def update_member(member_id):
     data = load_db()
-    member = next((m for m in data["members"] if m["id"] == member_id), None)
+    member = find_member(data, member_id)
     if not member:
-        return jsonify({"error": "Participante não encontrado."}), 404
+        return jsonify({"error": "Sócio não encontrado."}), 404
     payload = request.get_json(force=True)
-    for key in ["name", "phone", "photo", "active"]:
-        if key in payload:
-            member[key] = payload[key]
+    if "name" in payload:
+        member["name"] = str(payload["name"]).strip() or member["name"]
+    if "active" in payload:
+        member["active"] = bool(payload["active"])
     save_db(data)
     return jsonify(dashboard(data))
 
 
 @app.post("/api/expenses")
-@login_required
 def create_expense():
     data = load_db()
     payload = request.get_json(force=True)
-    name = norm(payload.get("name"))
-    participants = payload.get("participants") or []
+    name = str(payload.get("name", "")).strip()
+    participants = [pid for pid in payload.get("participants", []) if find_member(data, pid)]
     if not name:
         return jsonify({"error": "Nome da despesa é obrigatório."}), 400
     if not participants:
-        return jsonify({"error": "Selecione pelo menos um participante."}), 400
+        return jsonify({"error": "Selecione pelo menos um sócio."}), 400
     expense = {
-        "id": new_id(),
-        "group_id": payload.get("group_id") or data["groups"][0]["id"],
+        "id": uuid.uuid4().hex,
         "name": name,
-        "category": payload.get("category") or "Outros",
         "amount": as_float(money(payload.get("amount"))),
         "date": payload.get("date") or date.today().isoformat(),
-        "due_date": payload.get("due_date") or "",
-        "paid_by": payload.get("paid_by") or "",
         "participants": participants,
-        "split_mode": payload.get("split_mode") or "equal",
-        "weights": payload.get("weights") or {},
-        "manual_shares": payload.get("manual_shares") or {},
-        "status": payload.get("status") or "open",
-        "recurring": bool(payload.get("recurring", False)),
-        "receipt": payload.get("receipt") or "",
-        "notes": norm(payload.get("notes")),
+        "notes": str(payload.get("notes", "")).strip(),
+        "paid": bool(payload.get("paid", False)),
         "created_at": now_iso(),
         "updated_at": now_iso(),
     }
     data["expenses"].append(expense)
-    remember(data, "templates", name)
-    remember(data, "categories", expense["category"])
     save_db(data)
     return jsonify(dashboard(data))
 
 
 @app.patch("/api/expenses/<expense_id>")
-@login_required
 def update_expense(expense_id):
     data = load_db()
     expense = next((e for e in data["expenses"] if e["id"] == expense_id), None)
     if not expense:
         return jsonify({"error": "Despesa não encontrada."}), 404
     payload = request.get_json(force=True)
-    for key in ["group_id", "name", "category", "date", "due_date", "paid_by", "split_mode", "status", "notes", "receipt"]:
+    for key in ["name", "date", "notes"]:
         if key in payload:
-            expense[key] = payload[key]
-    for key in ["participants", "weights", "manual_shares"]:
-        if key in payload:
-            expense[key] = payload[key]
+            expense[key] = str(payload[key]).strip()
     if "amount" in payload:
         expense["amount"] = as_float(money(payload["amount"]))
-    if "recurring" in payload:
-        expense["recurring"] = bool(payload["recurring"])
+    if "participants" in payload:
+        participants = [pid for pid in payload["participants"] if find_member(data, pid)]
+        if not participants:
+            return jsonify({"error": "Selecione pelo menos um sócio."}), 400
+        expense["participants"] = participants
+    if "paid" in payload:
+        expense["paid"] = bool(payload["paid"])
     expense["updated_at"] = now_iso()
-    remember(data, "templates", expense.get("name"))
-    remember(data, "categories", expense.get("category"))
     save_db(data)
     return jsonify(dashboard(data))
 
 
 @app.delete("/api/expenses/<expense_id>")
-@login_required
 def delete_expense(expense_id):
     data = load_db()
     before = len(data["expenses"])
@@ -578,26 +245,28 @@ def delete_expense(expense_id):
 
 
 @app.get("/api/export.csv")
-@login_required
 def export_csv():
-    data = dashboard(load_db(), request.args)
+    data = dashboard(load_db(), request.args.get("month"))
     members = data["members"]
     out = io.StringIO()
     writer = csv.writer(out, delimiter=";")
-    writer.writerow(["Data", "Grupo", "Categoria", "Despesa", "Valor", "Status", *[m["name"] for m in members], "Observações"])
-    groups = by_id(data["groups"])
+    writer.writerow(["Data", "Despesa", "Valor", "Participantes", *[m["name"] for m in members], "Observações"])
     for expense in data["expenses"]:
-        writer.writerow([
-            expense.get("date", ""),
-            groups.get(expense.get("group_id"), {}).get("name", ""),
-            expense.get("category", ""),
-            expense.get("name", ""),
-            f'{expense["amount"]:.2f}'.replace(".", ","),
-            expense.get("status", ""),
-            *[f'{expense["shares"].get(m["id"], 0):.2f}'.replace(".", ",") for m in members],
-            expense.get("notes", ""),
-        ])
-    return Response(out.getvalue(), mimetype="text/csv; charset=utf-8", headers={"Content-Disposition": "attachment; filename=dividebem.csv"})
+        writer.writerow(
+            [
+                expense["date"],
+                expense["name"],
+                f'{expense["amount"]:.2f}'.replace(".", ","),
+                expense["participant_count"],
+                *[f'{expense["shares"].get(m["id"], 0):.2f}'.replace(".", ",") for m in members],
+                expense.get("notes", ""),
+            ]
+        )
+    return Response(
+        out.getvalue(),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=atelier-inove-financeiro.csv"},
+    )
 
 
 if __name__ == "__main__":

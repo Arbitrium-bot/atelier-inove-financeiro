@@ -3,11 +3,3 @@ data-preview/
 __pycache__/
 *.pyc
 .env
-node_modules/
-tools/
-android/.gradle/
-android/build/
-android/app/build/
-android/local.properties
-*.jks
-*.keystore
