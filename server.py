@@ -19,18 +19,23 @@ DB_PATH = DATA_DIR / "dividebem.json"
 app = Flask(__name__, static_folder=None)
 
 
-DEFAULT_MEMBERS = ["Lucas", "Débora", "André", "Daniel", "Helen"]
 DEFAULT_TEMPLATES = [
     "Aluguel", "Condomínio", "Luz", "Água", "Internet", "Gás", "Mercado",
-    "Farmácia", "Limpeza", "Café", "Manutenção", "Transporte", "Assinaturas",
-    "Material de escritório", "Funcionário", "Seguro", "Imposto", "Fornecedores",
-    "Urgtec", "Dental", "Embalagem", "Laundry", "Scanner", "Impressora",
-    "Terreno", "Admin", "Comissão", "Correio", "Forno", "Lalomere",
+    "Feira", "Farmácia", "Limpeza", "Faxina", "Manutenção", "Transporte",
+    "Combustível", "Estacionamento", "Assinaturas", "Streaming", "Telefone",
+    "Seguro", "Imposto", "IPTU", "Material de escritório", "Café",
+    "Funcionário", "Prestador de serviço", "Escola", "Pet", "Lazer",
+    "Viagem", "Restaurante", "Presentes",
 ]
 DEFAULT_CATEGORIES = [
     "Moradia", "Contas fixas", "Mercado", "Trabalho", "Saúde", "Transporte",
     "Assinaturas", "Manutenção", "Lazer", "Outros",
 ]
+LEGACY_LAB_MEMBER_NAMES = {"Lucas", "Débora", "André", "Daniel", "Helen"}
+LEGACY_LAB_TEMPLATES = {
+    "Urgtec", "Dental", "Embalagem", "Laundry", "Scanner", "Terreno",
+    "Admin", "Comissão", "Correio", "Forno", "Lalomere",
+}
 
 
 def now_iso():
@@ -63,20 +68,11 @@ def norm(text):
 def seed_db():
     group_id = new_id()
     members = []
-    for name in DEFAULT_MEMBERS:
-        members.append({
-            "id": new_id(),
-            "name": name,
-            "phone": "",
-            "photo": "",
-            "active": True,
-            "created_at": now_iso(),
-        })
     return {
         "app": {
             "name": "DivideBem",
             "tagline": "Contas claras em casa e no trabalho",
-            "seed_version": 4,
+            "seed_version": 5,
         },
         "profile": {
             "name": "",
@@ -86,9 +82,9 @@ def seed_db():
         },
         "groups": [{
             "id": group_id,
-            "name": "Casa / Trabalho",
-            "kind": "mixed",
-            "member_ids": [m["id"] for m in members],
+            "name": "Minha casa",
+            "kind": "home",
+            "member_ids": [],
             "created_at": now_iso(),
         }],
         "members": members,
@@ -101,8 +97,10 @@ def seed_db():
 def migrate(data):
     changed = False
     if "app" not in data:
-        data["app"] = {"name": "DivideBem", "tagline": "Contas claras em casa e no trabalho", "seed_version": 4}
+        data["app"] = {"name": "DivideBem", "tagline": "Contas claras em casa e no trabalho", "seed_version": 5}
         changed = True
+    data["app"]["name"] = "DivideBem"
+    data["app"]["tagline"] = "Contas claras em casa e no trabalho"
     data.setdefault("profile", {"name": "", "phone": "", "photo": "", "created_at": now_iso()})
     data.setdefault("members", [])
     data.setdefault("expenses", [])
@@ -112,11 +110,25 @@ def migrate(data):
         group_id = new_id()
         data["groups"] = [{
             "id": group_id,
-            "name": "Casa / Trabalho",
-            "kind": "mixed",
+            "name": "Minha casa",
+            "kind": "home",
             "member_ids": [m["id"] for m in data["members"]],
             "created_at": now_iso(),
         }]
+        changed = True
+    if data["app"].get("seed_version", 1) < 5:
+        has_only_legacy_members = data.get("members") and {m.get("name") for m in data["members"]}.issubset(LEGACY_LAB_MEMBER_NAMES)
+        has_no_real_expenses = not data.get("expenses")
+        if has_only_legacy_members and has_no_real_expenses:
+            data["members"] = []
+            for group in data["groups"]:
+                group["member_ids"] = []
+                if group.get("name") == "Casa / Trabalho":
+                    group["name"] = "Minha casa"
+                    group["kind"] = "home"
+            changed = True
+        data["templates"] = [t for t in data.get("templates", []) if t not in LEGACY_LAB_TEMPLATES]
+        data["app"]["seed_version"] = 5
         changed = True
     for item in DEFAULT_TEMPLATES:
         if item.casefold() not in {t.casefold() for t in data["templates"]}:
