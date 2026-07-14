@@ -83,12 +83,40 @@
     .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--text); color: white; border-radius: 8px; padding: 12px 16px; opacity: 0; pointer-events: none; transition: .2s; z-index: 10; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(-5px); }
     .brand-preview { width: 100%; border-radius: 8px; border: 1px solid var(--line); display: block; margin-bottom: 12px; }
-    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .summary { grid-template-columns: repeat(2, 1fr); } .filters { grid-template-columns: 1fr 1fr; } header { grid-template-columns: 1fr; } }
+    .hidden { display: none !important; }
+    .auth-shell { min-height: 100vh; display: grid; place-items: center; padding: 18px; background: linear-gradient(160deg, #dff7f0, #f5f7f4 58%, #ffffff); }
+    .auth-card { width: min(960px, 100%); display: grid; grid-template-columns: 1fr 390px; gap: 18px; align-items: stretch; }
+    .auth-hero { background: white; border: 1px solid var(--line); border-radius: 8px; padding: 24px; box-shadow: var(--shadow); display: grid; align-content: center; gap: 16px; }
+    .auth-hero img { width: 100%; border-radius: 8px; border: 1px solid var(--line); }
+    .auth-hero h1 { color: var(--brand); }
+    .auth-form { background: white; border: 1px solid var(--line); border-radius: 8px; padding: 18px; box-shadow: var(--shadow); display: grid; gap: 12px; align-content: start; }
+    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .summary { grid-template-columns: repeat(2, 1fr); } .filters { grid-template-columns: 1fr 1fr; } header { grid-template-columns: 1fr; } .auth-card { grid-template-columns: 1fr; } }
     @media (max-width: 540px) { .app { padding: 12px; } .two, .three, .summary, .filters { grid-template-columns: 1fr; } .tabs { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
-  <div class="app">
+  <section class="auth-shell" id="authShell">
+    <div class="auth-card">
+      <div class="auth-hero">
+        <img src="/logo-dividebem.png" alt="DivideBem">
+        <div>
+          <h1>Divida contas sem confusão</h1>
+          <p class="subtitle">Use em casa, república, família, viagem ou trabalho. Cada conta tem seus próprios grupos, pessoas e despesas.</p>
+        </div>
+      </div>
+      <form class="auth-form" id="authForm">
+        <h2 id="authTitle">Entrar</h2>
+        <label id="authNameLabel" class="hidden">Nome<input id="authName" autocomplete="name" placeholder="Seu nome"></label>
+        <label>E-mail<input id="authEmail" type="email" autocomplete="email" placeholder="voce@email.com" required></label>
+        <label>Senha<input id="authPassword" type="password" autocomplete="current-password" placeholder="Mínimo 6 caracteres" required></label>
+        <button id="authSubmit" type="submit">Entrar</button>
+        <button class="secondary" id="authToggle" type="button">Criar conta grátis</button>
+        <p class="muted">Seus dados ficam separados dos outros usuários. Essa é a base certa para vender o app.</p>
+      </form>
+    </div>
+  </section>
+
+  <div class="app hidden" id="appRoot">
     <header>
       <div class="brand">
         <img class="mark" src="/icon-192.png" alt="DivideBem">
@@ -100,6 +128,7 @@
       <div class="profile-mini">
         <div class="avatar" id="profileAvatar">Eu</div>
         <div><strong id="profileNameView">Seu perfil</strong><p class="muted">PWA pronto para Android</p></div>
+        <button class="secondary" id="logoutBtn" type="button">Sair</button>
       </div>
     </header>
     <main class="layout">
@@ -198,14 +227,52 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-    const state = { data: null, selected: new Set(), filters: { month: new Date().toISOString().slice(0,7), q: "", date: "", group: "", member: "", status: "" }, detail: false, receipt: "" };
+    const state = { data: null, user: null, authMode: "login", selected: new Set(), filters: { month: new Date().toISOString().slice(0,7), q: "", date: "", group: "", member: "", status: "" }, detail: false, receipt: "" };
 
     const toast = (msg) => { $("toast").textContent = msg; $("toast").classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => $("toast").classList.remove("show"), 2200); };
-    const api = async (url, options={}) => { const r = await fetch(url, { ...options, headers: { "Content-Type": "application/json", ...(options.headers||{}) }}); const d = await r.json(); if(!r.ok) throw new Error(d.error || "Erro ao salvar"); return d; };
+    const api = async (url, options={}) => {
+      const r = await fetch(url, { ...options, headers: { "Content-Type": "application/json", ...(options.headers||{}) }});
+      const d = await r.json();
+      if (r.status === 401 && d.auth_required) { showAuth(); throw new Error(d.error || "Faça login."); }
+      if(!r.ok) throw new Error(d.error || "Erro ao salvar");
+      return d;
+    };
     const readFile = (input, cb) => { const file = input.files?.[0]; if(!file) return; const reader = new FileReader(); reader.onload = () => cb(reader.result); reader.readAsDataURL(file); };
     const parseMoney = (v) => Number.parseFloat(String(v||"0").replace(/\./g,"").replace(",",".")) || 0;
     const today = () => new Date().toISOString().slice(0,10);
     const memberMap = () => Object.fromEntries(state.data.members.map(m => [m.id, m]));
+
+    function showAuth() {
+      $("authShell").classList.remove("hidden");
+      $("appRoot").classList.add("hidden");
+    }
+
+    function showApp() {
+      $("authShell").classList.add("hidden");
+      $("appRoot").classList.remove("hidden");
+    }
+
+    function renderAuth() {
+      const isRegister = state.authMode === "register";
+      $("authTitle").textContent = isRegister ? "Criar conta" : "Entrar";
+      $("authSubmit").textContent = isRegister ? "Criar conta" : "Entrar";
+      $("authToggle").textContent = isRegister ? "Já tenho conta" : "Criar conta grátis";
+      $("authNameLabel").classList.toggle("hidden", !isRegister);
+      $("authPassword").autocomplete = isRegister ? "new-password" : "current-password";
+    }
+
+    async function checkAuth() {
+      const status = await api("/api/auth/status");
+      if (!status.authenticated) {
+        renderAuth();
+        showAuth();
+        return;
+      }
+      state.user = status.user;
+      showApp();
+      await load();
+      resetForm();
+    }
 
     async function load() {
       const p = new URLSearchParams();
@@ -344,8 +411,35 @@
       const lines = ["Resumo DivideBem", `Total: ${money.format(state.data.grand_total)}`, ...state.data.members.map(m => `${m.name}: deve ${money.format(state.data.totals[m.id]||0)} · saldo ${money.format(state.data.balances[m.id]||0)}`)];
       window.open(`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`, "_blank");
     };
+    $("authToggle").onclick = () => {
+      state.authMode = state.authMode === "login" ? "register" : "login";
+      renderAuth();
+    };
+    $("authForm").onsubmit = async (e) => {
+      e.preventDefault();
+      const path = state.authMode === "register" ? "/api/auth/register" : "/api/auth/login";
+      const payload = {
+        name: $("authName").value,
+        email: $("authEmail").value,
+        password: $("authPassword").value,
+      };
+      const result = await api(path, { method: "POST", body: JSON.stringify(payload) });
+      state.user = result.user;
+      state.data = result.dashboard;
+      showApp();
+      resetForm();
+      toast(state.authMode === "register" ? "Conta criada." : "Bem-vindo de volta.");
+    };
+    $("logoutBtn").onclick = async () => {
+      await api("/api/auth/logout", { method: "POST", body: "{}" });
+      state.user = null;
+      state.data = null;
+      state.selected = new Set();
+      $("authForm").reset();
+      showAuth();
+    };
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/service-worker.js").catch(()=>{});
-    $("date").value = today(); $("month").value = state.filters.month; load().then(resetForm).catch(err => toast(err.message));
+    $("date").value = today(); $("month").value = state.filters.month; checkAuth().catch(err => toast(err.message));
   </script>
 </body>
 </html>

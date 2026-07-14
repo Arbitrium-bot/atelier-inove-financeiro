@@ -5,6 +5,7 @@ Aplicativo para dividir despesas de casa, república, família, viagens e pequen
 ## Diferencial
 
 - Perfis e participantes com foto.
+- Cadastro/login com dados separados por usuário.
 - Grupos para casa, trabalho, viagem ou família.
 - Modelos prontos de despesas comuns.
 - Divisão igual, por peso/porcentagem ou valor manual.

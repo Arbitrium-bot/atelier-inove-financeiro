@@ -1,22 +1,36 @@
 import csv
+import hashlib
+import hmac
 import io
 import json
 import os
 import re
+import secrets
 import uuid
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
+from functools import wraps
 from pathlib import Path
 
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory, session
 
 
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", APP_DIR / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "dividebem.json"
+USERS_PATH = DATA_DIR / "users.json"
+USER_DATA_DIR = DATA_DIR / "users"
+SECRET_PATH = DATA_DIR / "secret_key.txt"
+USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 app = Flask(__name__, static_folder=None)
+if os.environ.get("SECRET_KEY") or os.environ.get("FLASK_SECRET_KEY"):
+    app.secret_key = os.environ.get("SECRET_KEY") or os.environ.get("FLASK_SECRET_KEY")
+else:
+    if not SECRET_PATH.exists():
+        SECRET_PATH.write_text(secrets.token_hex(32), encoding="utf-8")
+    app.secret_key = SECRET_PATH.read_text(encoding="utf-8").strip()
 
 
 DEFAULT_TEMPLATES = [
@@ -63,6 +77,60 @@ def as_float(value):
 
 def norm(text):
     return re.sub(r"\s+", " ", str(text or "").strip())
+
+
+def normalize_email(email):
+    return norm(email).casefold()
+
+
+def load_users():
+    if not USERS_PATH.exists():
+        save_users({"users": []})
+    with USERS_PATH.open("r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def save_users(data):
+    tmp = USERS_PATH.with_suffix(".tmp")
+    with tmp.open("w", encoding="utf-8") as fh:
+        json.dump(data, fh, ensure_ascii=False, indent=2)
+    tmp.replace(USERS_PATH)
+
+
+def hash_password(password, salt=None):
+    salt = salt or secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", str(password).encode("utf-8"), salt.encode("utf-8"), 220000)
+    return salt, digest.hex()
+
+
+def verify_password(password, salt, password_hash):
+    _, digest = hash_password(password, salt)
+    return hmac.compare_digest(digest, password_hash)
+
+
+def public_user(user):
+    return {"id": user["id"], "name": user.get("name", ""), "email": user.get("email", "")}
+
+
+def current_user():
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+    users = load_users()["users"]
+    return next((user for user in users if user["id"] == user_id), None)
+
+
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not current_user():
+            return jsonify({"error": "Faça login para continuar.", "auth_required": True}), 401
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def user_db_path(user_id):
+    return USER_DATA_DIR / f"{re.sub(r'[^a-zA-Z0-9_-]', '', user_id)}.json"
 
 
 def seed_db():
@@ -154,11 +222,15 @@ def migrate(data):
 
 
 def load_db():
-    if not DB_PATH.exists():
+    user = current_user()
+    path = user_db_path(user["id"]) if user else DB_PATH
+    if not path.exists():
         data = seed_db()
+        if user:
+            data["profile"]["name"] = user.get("name", "")
         save_db(data)
         return data
-    with DB_PATH.open("r", encoding="utf-8") as fh:
+    with path.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
     if migrate(data):
         save_db(data)
@@ -166,10 +238,12 @@ def load_db():
 
 
 def save_db(data):
-    tmp = DB_PATH.with_suffix(".tmp")
+    user = current_user()
+    path = user_db_path(user["id"]) if user else DB_PATH
+    tmp = path.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8") as fh:
         json.dump(data, fh, ensure_ascii=False, indent=2)
-    tmp.replace(DB_PATH)
+    tmp.replace(path)
 
 
 def by_id(items):
@@ -299,12 +373,67 @@ def static_files(path):
     return send_from_directory(APP_DIR, path)
 
 
+@app.get("/api/auth/status")
+def auth_status():
+    user = current_user()
+    return jsonify({"authenticated": bool(user), "user": public_user(user) if user else None})
+
+
+@app.post("/api/auth/register")
+def auth_register():
+    payload = request.get_json(force=True)
+    name = norm(payload.get("name"))
+    email = normalize_email(payload.get("email"))
+    password = str(payload.get("password") or "")
+    if not name or not email or len(password) < 6:
+        return jsonify({"error": "Informe nome, e-mail e uma senha com pelo menos 6 caracteres."}), 400
+    users_db = load_users()
+    if any(user["email"] == email for user in users_db["users"]):
+        return jsonify({"error": "Este e-mail já está cadastrado."}), 409
+    salt, password_hash = hash_password(password)
+    user = {
+        "id": new_id(),
+        "name": name,
+        "email": email,
+        "password_salt": salt,
+        "password_hash": password_hash,
+        "created_at": now_iso(),
+    }
+    users_db["users"].append(user)
+    save_users(users_db)
+    session["user_id"] = user["id"]
+    data = seed_db()
+    data["profile"]["name"] = name
+    save_db(data)
+    return jsonify({"authenticated": True, "user": public_user(user), "dashboard": dashboard(data)})
+
+
+@app.post("/api/auth/login")
+def auth_login():
+    payload = request.get_json(force=True)
+    email = normalize_email(payload.get("email"))
+    password = str(payload.get("password") or "")
+    user = next((item for item in load_users()["users"] if item["email"] == email), None)
+    if not user or not verify_password(password, user.get("password_salt", ""), user.get("password_hash", "")):
+        return jsonify({"error": "E-mail ou senha inválidos."}), 401
+    session["user_id"] = user["id"]
+    return jsonify({"authenticated": True, "user": public_user(user), "dashboard": dashboard(load_db())})
+
+
+@app.post("/api/auth/logout")
+def auth_logout():
+    session.clear()
+    return jsonify({"authenticated": False})
+
+
 @app.get("/api/dashboard")
+@login_required
 def api_dashboard():
     return jsonify(dashboard(load_db(), request.args))
 
 
 @app.patch("/api/profile")
+@login_required
 def update_profile():
     data = load_db()
     payload = request.get_json(force=True)
@@ -316,6 +445,7 @@ def update_profile():
 
 
 @app.post("/api/groups")
+@login_required
 def create_group():
     data = load_db()
     payload = request.get_json(force=True)
@@ -332,6 +462,7 @@ def create_group():
 
 
 @app.post("/api/members")
+@login_required
 def create_member():
     data = load_db()
     payload = request.get_json(force=True)
@@ -357,6 +488,7 @@ def create_member():
 
 
 @app.patch("/api/members/<member_id>")
+@login_required
 def update_member(member_id):
     data = load_db()
     member = next((m for m in data["members"] if m["id"] == member_id), None)
@@ -371,6 +503,7 @@ def update_member(member_id):
 
 
 @app.post("/api/expenses")
+@login_required
 def create_expense():
     data = load_db()
     payload = request.get_json(force=True)
@@ -408,6 +541,7 @@ def create_expense():
 
 
 @app.patch("/api/expenses/<expense_id>")
+@login_required
 def update_expense(expense_id):
     data = load_db()
     expense = next((e for e in data["expenses"] if e["id"] == expense_id), None)
@@ -432,6 +566,7 @@ def update_expense(expense_id):
 
 
 @app.delete("/api/expenses/<expense_id>")
+@login_required
 def delete_expense(expense_id):
     data = load_db()
     before = len(data["expenses"])
@@ -443,6 +578,7 @@ def delete_expense(expense_id):
 
 
 @app.get("/api/export.csv")
+@login_required
 def export_csv():
     data = dashboard(load_db(), request.args)
     members = data["members"]
