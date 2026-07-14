@@ -1,0 +1,31 @@
+{
+  "name": "dividebem",
+  "version": "1.0.0",
+  "description": "DivideBem - contas compartilhadas para casa e trabalho.",
+  "main": "index.js",
+  "scripts": {
+    "android:add": "cap add android",
+    "android:sync": "cap sync android",
+    "android:open": "cap open android",
+    "android:build:aab": "cd android && gradlew.bat bundleRelease"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.7.0",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.1",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/core": "^8.4.1"
+  }
+}
