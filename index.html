@@ -109,19 +109,50 @@
       line-height: 1.35;
     }
 
-    .sound-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+    .music-player {
+      display: grid;
+      grid-template-columns: 42px minmax(130px, 210px) 42px;
       gap: 8px;
-      min-width: 132px;
-      background: #fffdf8;
-      color: var(--gold-2);
-      border: 1px solid rgba(201, 147, 45, .44);
+      align-items: center;
+      background: rgba(255, 253, 248, .86);
+      border: 1px solid rgba(201, 147, 45, .36);
+      border-radius: 8px;
+      padding: 8px;
       box-shadow: 0 10px 28px rgba(45, 34, 18, .08);
     }
 
-    .sound-button.playing {
+    .player-main {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+      text-align: left;
+    }
+
+    .player-title {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 750;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .player-status {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .player-button {
+      min-height: 42px;
+      width: 42px;
+      padding: 0;
+      border-radius: 8px;
+      background: #fffdf8;
+      color: var(--gold-2);
+      border: 1px solid rgba(201, 147, 45, .44);
+    }
+
+    .player-button.playing {
       background: linear-gradient(180deg, #f3c46b, var(--gold));
       color: #1f1608;
       border-color: transparent;
@@ -380,7 +411,7 @@
       .member-buttons { grid-template-columns: 1fr; }
       header { align-items: flex-start; flex-wrap: wrap; }
       .logo { width: 50px; height: 50px; }
-      .sound-button { width: 100%; }
+      .music-player { width: 100%; grid-template-columns: 42px 1fr 42px; }
     }
   </style>
 </head>
@@ -392,7 +423,14 @@
         <h1>Financeiro Atelier Inove</h1>
         <p class="subtitle">Despesas compartilhadas, divisão automática e totais por sócio.</p>
       </div>
-      <button class="sound-button" id="introAudioBtn" type="button" aria-label="Ouvir audio de abertura">Ouvir abertura</button>
+      <div class="music-player" aria-label="Player de prosperidade">
+        <button class="player-button" id="prevTrackBtn" type="button" aria-label="Musica anterior">‹</button>
+        <button class="player-main secondary" id="musicPlayBtn" type="button" aria-label="Tocar musica">
+          <span class="player-title" id="musicTrackTitle">Prosperidade financeira</span>
+          <span class="player-status" id="musicStatus">Toque para ouvir</span>
+        </button>
+        <button class="player-button" id="nextTrackBtn" type="button" aria-label="Proxima musica">›</button>
+      </div>
     </header>
 
     <main class="layout">
@@ -467,7 +505,7 @@
     </main>
   </div>
 
-  <audio id="introAudio" src="/abertura-financeiro.mp3" preload="auto"></audio>
+  <audio id="prosperityAudio" preload="none"></audio>
   <div class="toast" id="toast"></div>
 
   <script>
@@ -635,30 +673,57 @@
       return String(text).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
     }
 
-    function initIntroAudio() {
-      const audio = $("introAudio");
-      const button = $("introAudioBtn");
-      if (!audio || !button) return;
+    const prosperityTracks = [
+      { title: "Prosperidade financeira", src: "/audio/prosperidade-financeira.mp3" },
+      { title: "Prosperidade financeira 1", src: "/audio/prosperidade-financeira-1.mp3" },
+      { title: "Prosperidade financeira 2", src: "/audio/prosperidade-financeira-2.mp3" },
+      { title: "Prosperidade financeira 3", src: "/audio/prosperidade-financeira-3.mp3" },
+      { title: "Prosperidade", src: "/audio/prosperidade.mp3" },
+      { title: "Prosperidade 1", src: "/audio/prosperidade-1.mp3" },
+      { title: "Prosperidade 2", src: "/audio/prosperidade-2.mp3" },
+      { title: "Prosperidade 3", src: "/audio/prosperidade-3.mp3" }
+    ];
 
-      const setPlaying = (playing) => {
-        button.classList.toggle("playing", playing);
-        button.textContent = playing ? "Tocando" : "Ouvir abertura";
+    function initProsperityPlayer() {
+      const audio = $("prosperityAudio");
+      const playButton = $("musicPlayBtn");
+      const prevButton = $("prevTrackBtn");
+      const nextButton = $("nextTrackBtn");
+      const title = $("musicTrackTitle");
+      const status = $("musicStatus");
+      if (!audio || !playButton || !prevButton || !nextButton || !title || !status) return;
+      let trackIndex = Number(localStorage.getItem("atelierProsperityTrack") || 0);
+      if (!prosperityTracks[trackIndex]) trackIndex = 0;
+
+      const setTrack = (index) => {
+        trackIndex = (index + prosperityTracks.length) % prosperityTracks.length;
+        localStorage.setItem("atelierProsperityTrack", String(trackIndex));
+        audio.src = prosperityTracks[trackIndex].src;
+        title.textContent = prosperityTracks[trackIndex].title;
       };
 
-      const playIntro = async () => {
+      const setPlaying = (playing) => {
+        playButton.classList.toggle("playing", playing);
+        status.textContent = playing ? "Tocando agora" : "Toque para ouvir";
+      };
+
+      const play = async () => {
         try {
-          audio.currentTime = 0;
+          if (!audio.src) setTrack(trackIndex);
           await audio.play();
           setPlaying(true);
         } catch {
           setPlaying(false);
+          showToast("Toque novamente para liberar o audio.");
         }
       };
 
-      button.addEventListener("click", playIntro);
-      audio.addEventListener("ended", () => setPlaying(false));
+      playButton.addEventListener("click", () => audio.paused ? play() : audio.pause());
+      prevButton.addEventListener("click", () => { setTrack(trackIndex - 1); play(); });
+      nextButton.addEventListener("click", () => { setTrack(trackIndex + 1); play(); });
       audio.addEventListener("pause", () => setPlaying(false));
-      playIntro();
+      audio.addEventListener("ended", () => { setTrack(trackIndex + 1); play(); });
+      setTrack(trackIndex);
     }
 
     $("memberButtons").addEventListener("click", (event) => {
@@ -727,7 +792,7 @@
 
     $("expenseDate").value = new Date().toISOString().slice(0, 10);
     $("monthFilter").value = state.month;
-    initIntroAudio();
+    initProsperityPlayer();
     load().then(resetForm).catch((error) => showToast(error.message));
   </script>
 </body>
