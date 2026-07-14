@@ -1,5 +1,5 @@
-const CACHE = "atelier-inove-financeiro-v1";
-const ASSETS = ["/", "/manifest.json", "/logo-inove.png", "/icon-192.png", "/icon-512.png"];
+const CACHE = "dividebem-v2";
+const ASSETS = ["/", "/manifest.json", "/logo-dividebem.png", "/icon-192.png", "/icon-512.png", "/privacy"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
