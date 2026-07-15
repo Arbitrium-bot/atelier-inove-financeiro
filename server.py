@@ -94,6 +94,8 @@ def find_member(data, member_id):
 def expense_view(expense, members):
     participant_ids = [pid for pid in expense.get("participants", []) if pid in members]
     total = money(expense.get("amount"))
+    kind = expense.get("kind") or expense.get("type") or "debit"
+    sign = Decimal("-1") if kind == "credit" else Decimal("1")
     count = len(participant_ids)
     base = (total / count).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if count else Decimal("0")
     cents_total = int((total * 100).to_integral_value())
@@ -102,12 +104,14 @@ def expense_view(expense, members):
     shares = {}
     for index, member_id in enumerate(participant_ids):
         cents = base_cents + (1 if index < remainder else 0)
-        shares[member_id] = cents / 100
+        shares[member_id] = as_float((Decimal(cents) / Decimal("100")) * sign)
     return {
         **expense,
+        "kind": kind,
         "amount": as_float(total),
+        "signed_amount": as_float(total * sign),
         "participant_count": count,
-        "share_amount": as_float(base),
+        "share_amount": as_float(base * sign),
         "shares": shares,
     }
 
@@ -129,7 +133,9 @@ def dashboard(data, month=None):
         "members": data["members"],
         "expenses": sorted(expenses, key=lambda e: (e.get("date", ""), e.get("created_at", "")), reverse=True),
         "totals": totals,
-        "grand_total": round(sum(e["amount"] for e in expenses), 2),
+        "grand_total": round(sum(e.get("signed_amount", e["amount"]) for e in expenses), 2),
+        "debit_total": round(sum(e["amount"] for e in expenses if e.get("kind") != "credit"), 2),
+        "credit_total": round(sum(e["amount"] for e in expenses if e.get("kind") == "credit"), 2),
         "month": month,
     }
 
@@ -197,6 +203,7 @@ def create_expense():
         "id": uuid.uuid4().hex,
         "name": name,
         "amount": as_float(money(payload.get("amount"))),
+        "kind": "credit" if payload.get("kind") == "credit" else "debit",
         "date": payload.get("date") or date.today().isoformat(),
         "participants": participants,
         "notes": str(payload.get("notes", "")).strip(),
@@ -219,6 +226,8 @@ def update_expense(expense_id):
     for key in ["name", "date", "notes"]:
         if key in payload:
             expense[key] = str(payload[key]).strip()
+    if "kind" in payload:
+        expense["kind"] = "credit" if payload.get("kind") == "credit" else "debit"
     if "amount" in payload:
         expense["amount"] = as_float(money(payload["amount"]))
     if "participants" in payload:
@@ -250,11 +259,12 @@ def export_csv():
     members = data["members"]
     out = io.StringIO()
     writer = csv.writer(out, delimiter=";")
-    writer.writerow(["Data", "Despesa", "Valor", "Participantes", *[m["name"] for m in members], "Observações"])
+    writer.writerow(["Data", "Tipo", "Despesa", "Valor", "Participantes", *[m["name"] for m in members], "Observações"])
     for expense in data["expenses"]:
         writer.writerow(
             [
                 expense["date"],
+                "Crédito" if expense.get("kind") == "credit" else "Débito",
                 expense["name"],
                 f'{expense["amount"]:.2f}'.replace(".", ","),
                 expense["participant_count"],

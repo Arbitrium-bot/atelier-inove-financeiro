@@ -435,12 +435,19 @@
 
     <main class="layout">
       <section class="panel">
-        <h2 id="formTitle">Nova despesa</h2>
+        <h2 id="formTitle">Novo lançamento</h2>
         <form class="form-grid" id="expenseForm">
           <input type="hidden" id="editingId">
           <label>
             Despesa
             <input id="expenseName" placeholder="Ex: Aluguel, Urgtec, Café" autocomplete="off" required>
+          </label>
+          <label>
+            Tipo
+            <select id="expenseKind">
+              <option value="debit">Débito</option>
+              <option value="credit">Crédito</option>
+            </select>
           </label>
           <div class="two">
             <label>
@@ -453,7 +460,7 @@
             </label>
           </div>
           <label>
-            Quem participa da despesa
+            Quem participa
             <div class="member-buttons" id="memberButtons"></div>
           </label>
           <div class="calc">
@@ -471,7 +478,7 @@
             <textarea id="expenseNotes" placeholder="Opcional"></textarea>
           </label>
           <div class="actions">
-            <button type="submit" id="saveBtn">Salvar despesa</button>
+            <button type="submit" id="saveBtn">Salvar lançamento</button>
             <button type="button" class="secondary" id="clearBtn">Limpar</button>
           </div>
         </form>
@@ -558,7 +565,9 @@
       renderExpenses();
       updateCalc();
       $("monthFilter").value = state.month;
-      $("summaryText").textContent = `${state.expenses.length} despesas cadastradas · total ${currency.format(state.expenses.reduce((sum, item) => sum + item.amount, 0))}`;
+      const debits = state.expenses.filter((item) => item.kind !== "credit").reduce((sum, item) => sum + item.amount, 0);
+      const credits = state.expenses.filter((item) => item.kind === "credit").reduce((sum, item) => sum + item.amount, 0);
+      $("summaryText").textContent = `${state.expenses.length} lançamentos · débitos ${currency.format(debits)} · créditos ${currency.format(credits)} · saldo ${currency.format(debits - credits)}`;
     }
 
     function renderMemberButtons() {
@@ -576,7 +585,7 @@
 
     function renderTotals() {
       $("totals").innerHTML = [
-        `<div class="total-card"><span class="muted">Total geral</span><strong>${currency.format(state.expenses.reduce((sum, item) => sum + item.amount, 0))}</strong></div>`,
+        `<div class="total-card"><span class="muted">Saldo geral</span><strong>${currency.format(state.expenses.reduce((sum, item) => sum + (item.signed_amount ?? item.amount), 0))}</strong></div>`,
         ...state.members.map((member) => `
           <div class="total-card">
             <span class="muted">${member.name}</span>
@@ -588,11 +597,13 @@
 
     function renderExpenses() {
       if (!state.expenses.length) {
-        $("expenseList").innerHTML = `<div class="expense"><p class="muted">Nenhuma despesa neste mês.</p></div>`;
+        $("expenseList").innerHTML = `<div class="expense"><p class="muted">Nenhum lançamento neste mês.</p></div>`;
         return;
       }
       $("expenseList").innerHTML = state.expenses.map((expense) => {
         const memberMap = Object.fromEntries(state.members.map((m) => [m.id, m.name]));
+        const isCredit = expense.kind === "credit";
+        const typeLabel = isCredit ? "Crédito" : "Débito";
         const shares = Object.entries(expense.shares).map(([memberId, value]) => `
           <div class="share"><span>${memberMap[memberId] || "Sócio"}</span><span>${currency.format(value)}</span></div>
         `).join("");
@@ -601,7 +612,7 @@
             <div class="expense-head">
               <div>
                 <div class="expense-title">${escapeHtml(expense.name)}</div>
-                <div class="muted">${formatDate(expense.date)} · ${expense.participant_count} participantes</div>
+                <div class="muted">${formatDate(expense.date)} · ${typeLabel} · ${expense.participant_count} participantes</div>
               </div>
               <span class="pill">${currency.format(expense.amount)}</span>
             </div>
@@ -618,17 +629,19 @@
 
     function updateCalc() {
       const amount = parseMoney($("expenseAmount").value);
+      const sign = $("expenseKind").value === "credit" ? -1 : 1;
       const count = state.selected.size;
       $("calcCount").textContent = String(count);
-      $("calcShare").textContent = currency.format(count ? amount / count : 0);
+      $("calcShare").textContent = currency.format(count ? (amount / count) * sign : 0);
       renderMemberButtons();
     }
 
     function resetForm() {
       $("editingId").value = "";
-      $("formTitle").textContent = "Nova despesa";
-      $("saveBtn").textContent = "Salvar despesa";
+      $("formTitle").textContent = "Novo lançamento";
+      $("saveBtn").textContent = "Salvar lançamento";
       $("expenseForm").reset();
+      $("expenseKind").value = "debit";
       $("expenseDate").value = new Date().toISOString().slice(0, 10);
       state.selected = new Set(state.members.filter((m) => m.active).map((m) => m.id));
       updateCalc();
@@ -638,9 +651,10 @@
       const expense = state.expenses.find((item) => item.id === id);
       if (!expense) return;
       $("editingId").value = expense.id;
-      $("formTitle").textContent = "Editar despesa";
-      $("saveBtn").textContent = "Atualizar despesa";
+      $("formTitle").textContent = "Editar lançamento";
+      $("saveBtn").textContent = "Atualizar lançamento";
       $("expenseName").value = expense.name;
+      $("expenseKind").value = expense.kind || "debit";
       $("expenseAmount").value = String(expense.amount.toFixed(2)).replace(".", ",");
       $("expenseDate").value = expense.date;
       $("expenseNotes").value = expense.notes || "";
@@ -736,6 +750,7 @@
     });
 
     $("expenseAmount").addEventListener("input", updateCalc);
+    $("expenseKind").addEventListener("change", updateCalc);
 
     $("expenseForm").addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -743,6 +758,7 @@
       const payload = {
         name: $("expenseName").value,
         amount: $("expenseAmount").value,
+        kind: $("expenseKind").value,
         date: $("expenseDate").value,
         participants: [...state.selected],
         notes: $("expenseNotes").value
@@ -753,7 +769,7 @@
       });
       applyDashboard(data);
       resetForm();
-      showToast(editingId ? "Despesa atualizada." : "Despesa cadastrada.");
+      showToast(editingId ? "Lançamento atualizado." : "Lançamento cadastrado.");
     });
 
     $("clearBtn").addEventListener("click", resetForm);
