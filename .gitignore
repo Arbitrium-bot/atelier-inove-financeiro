@@ -1,5 +1,7 @@
 data/
 data-preview/
+data-preview-recurring/
+.testdeps/
 __pycache__/
 *.pyc
 .env

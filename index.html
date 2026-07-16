@@ -11,372 +11,148 @@
     :root {
       --bg: #f6f4ef;
       --panel: #ffffff;
-      --panel-2: #fbf8f1;
+      --soft: #fbf8f1;
       --line: #ddd5c6;
       --gold: #b77d18;
-      --gold-2: #8a5a0a;
+      --gold-dark: #7e5109;
       --text: #1f1b16;
       --muted: #756b5d;
       --danger: #bc3535;
       --ok: #248a58;
-      --input: #fffdf8;
-      color-scheme: light;
+      --blue: #2472a3;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      color-scheme: light;
     }
 
     * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      background: linear-gradient(180deg, #fffaf0 0%, var(--bg) 320px);
-      color: var(--text);
-      min-height: 100vh;
-    }
-
-    button, input, textarea, select {
-      font: inherit;
-    }
-
+    body { margin: 0; background: linear-gradient(180deg, #fffaf0 0, var(--bg) 340px); min-height: 100vh; }
+    button, input, textarea, select { font: inherit; }
     button {
+      min-height: 42px;
       border: 0;
       border-radius: 8px;
-      background: var(--gold);
-      color: #171108;
-      font-weight: 750;
-      min-height: 42px;
       padding: 0 14px;
+      background: var(--gold);
+      color: #181107;
+      font-weight: 800;
       cursor: pointer;
     }
-
-    button.secondary {
-      background: #fffdf8;
-      color: var(--text);
+    button.secondary { background: #fffdf8; border: 1px solid var(--line); color: var(--text); }
+    button.ghost { background: transparent; border: 1px solid rgba(183,125,24,.38); color: var(--gold-dark); }
+    button.danger { background: transparent; border: 1px solid rgba(188,53,53,.35); color: var(--danger); }
+    button.active { background: linear-gradient(180deg, #f4c86f, var(--gold)); border-color: transparent; color: #171006; }
+    input, textarea, select {
+      width: 100%;
+      min-height: 44px;
       border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffdf8;
+      padding: 10px 12px;
+      color: var(--text);
+      outline: none;
     }
+    textarea { min-height: 78px; resize: vertical; }
+    label { display: grid; gap: 7px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    input:focus, textarea:focus, select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(183,125,24,.14); }
 
-    button.danger {
-      background: transparent;
-      color: var(--danger);
-      border: 1px solid rgba(232, 97, 97, .35);
-    }
-
-    button.ghost {
-      background: transparent;
-      color: var(--gold-2);
-      border: 1px solid rgba(201, 147, 45, .4);
-    }
-
-    .app {
-      width: min(1180px, 100%);
-      margin: 0 auto;
-      padding: 18px;
-    }
-
-    header {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 12px 0 22px;
-    }
-
-    .header-copy {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .logo {
-      width: 58px;
-      height: 58px;
-      object-fit: contain;
-      border-radius: 14px;
-      background: #111;
-      border: 1px solid rgba(183, 125, 24, .32);
-    }
-
-    h1, h2, h3, p {
-      margin: 0;
-    }
-
-    h1 {
-      font-size: clamp(24px, 5vw, 42px);
-      line-height: 1;
-      letter-spacing: 0;
-    }
-
-    .subtitle {
-      color: var(--muted);
-      margin-top: 6px;
-      line-height: 1.35;
-    }
-
+    .app { width: min(1240px, 100%); margin: 0 auto; padding: 18px; }
+    header { display: flex; align-items: center; gap: 14px; padding: 10px 0 18px; }
+    .logo { width: 58px; height: 58px; border-radius: 14px; object-fit: contain; background: #111; border: 1px solid rgba(183,125,24,.36); }
+    .header-copy { flex: 1; min-width: 0; }
     .music-player {
       display: grid;
       grid-template-columns: 42px minmax(130px, 210px) 42px;
       gap: 8px;
       align-items: center;
-      background: rgba(255, 253, 248, .86);
-      border: 1px solid rgba(201, 147, 45, .36);
+      background: rgba(255,253,248,.88);
+      border: 1px solid rgba(183,125,24,.34);
       border-radius: 8px;
       padding: 8px;
-      box-shadow: 0 10px 28px rgba(45, 34, 18, .08);
+      box-shadow: 0 10px 28px rgba(45,34,18,.08);
     }
+    .player-main { display: grid; gap: 2px; min-width: 0; text-align: left; }
+    .player-title { color: var(--text); font-size: 13px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .player-status { color: var(--muted); font-size: 12px; }
+    .player-button { min-height: 42px; width: 42px; padding: 0; background: #fffdf8; color: var(--gold-dark); border: 1px solid rgba(183,125,24,.44); }
+    .player-button.playing { background: linear-gradient(180deg, #f4c86f, var(--gold)); color: #171006; border-color: transparent; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(25px, 5vw, 42px); line-height: 1; }
+    h2 { font-size: 18px; }
+    h3 { font-size: 15px; }
+    .subtitle, .muted { color: var(--muted); }
+    .subtitle { margin-top: 6px; line-height: 1.35; }
 
-    .player-main {
-      display: grid;
-      gap: 2px;
-      min-width: 0;
-      text-align: left;
-    }
-
-    .player-title {
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 750;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .player-status {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .player-button {
-      min-height: 42px;
-      width: 42px;
-      padding: 0;
-      border-radius: 8px;
-      background: #fffdf8;
-      color: var(--gold-2);
-      border: 1px solid rgba(201, 147, 45, .44);
-    }
-
-    .player-button.playing {
-      background: linear-gradient(180deg, #f3c46b, var(--gold));
-      color: #1f1608;
-      border-color: transparent;
-    }
-
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(320px, 410px) 1fr;
-      gap: 18px;
-      align-items: start;
-    }
-
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 16px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .layout { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 18px; align-items: start; }
     .panel {
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 16px;
-      box-shadow: 0 18px 50px rgba(45, 34, 18, .1);
+      box-shadow: 0 18px 50px rgba(45,34,18,.1);
     }
+    .form-grid, .stack { display: grid; gap: 12px; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .actions button { flex: 1; }
+    .topbar { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .topbar label { max-width: 210px; }
 
-    .panel h2 {
-      font-size: 17px;
-      margin-bottom: 14px;
-    }
+    .member-buttons, .person-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .member-toggle, .person-tab { background: #fffdf8; color: var(--text); border: 1px solid var(--line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .form-grid {
-      display: grid;
-      gap: 12px;
-    }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .card { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+    .card strong { display: block; font-size: 20px; margin-top: 4px; }
+    .card.ok strong { color: var(--ok); }
+    .card.warn strong { color: var(--danger); }
 
-    label {
-      display: grid;
-      gap: 7px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 650;
-    }
-
-    input, textarea, select {
-      width: 100%;
-      border: 1px solid var(--line);
-      background: var(--input);
-      color: var(--text);
-      border-radius: 8px;
-      min-height: 44px;
-      padding: 10px 12px;
-      outline: none;
-    }
-
-    textarea {
-      min-height: 78px;
-      resize: vertical;
-    }
-
-    input:focus, textarea:focus, select:focus {
-      border-color: var(--gold);
-      box-shadow: 0 0 0 3px rgba(201, 147, 45, .16);
-    }
-
-    .two {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .member-buttons {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .member-toggle {
-      min-height: 46px;
-      background: #fffdf8;
-      color: var(--text);
-      border: 1px solid var(--line);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .member-toggle.active {
-      background: linear-gradient(180deg, #f3c46b, var(--gold));
-      color: #1f1608;
-      border-color: transparent;
-    }
-
-    .calc {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      background: var(--panel-2);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 12px;
-    }
-
-    .calc strong, .total-card strong {
-      display: block;
-      font-size: 20px;
-      margin-top: 4px;
-    }
-
-    .muted {
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .actions button {
-      flex: 1;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: end;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-
-    .topbar label {
-      max-width: 210px;
-    }
-
-    .totals {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .total-card {
-      background: var(--panel-2);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 12px;
-    }
-
-    .list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .expense {
-      background: #ffffff;
+    .list { display: grid; gap: 10px; }
+    .expense, .movement {
+      background: #fff;
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 12px;
       display: grid;
       gap: 10px;
     }
-
-    .expense-head {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: flex-start;
-    }
-
-    .expense-title {
-      font-weight: 800;
-      font-size: 16px;
-    }
-
+    .row { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .title { font-weight: 850; font-size: 16px; }
     .pill {
       display: inline-flex;
       align-items: center;
       min-height: 26px;
       border-radius: 999px;
       padding: 0 9px;
-      background: rgba(201, 147, 45, .14);
-      color: var(--gold-2);
-      border: 1px solid rgba(201, 147, 45, .25);
+      background: rgba(183,125,24,.14);
+      color: var(--gold-dark);
+      border: 1px solid rgba(183,125,24,.24);
       font-size: 12px;
-      font-weight: 750;
-    }
-
-    .shares {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-      gap: 8px;
-    }
-
-    .share {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      background: #fbf8f1;
-      border: 1px solid #e5dccb;
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 13px;
-    }
-
-    .share span:last-child {
-      color: var(--gold-2);
       font-weight: 800;
+      white-space: nowrap;
     }
+    .pill.green { background: rgba(36,138,88,.12); color: var(--ok); border-color: rgba(36,138,88,.22); }
+    .pill.red { background: rgba(188,53,53,.10); color: var(--danger); border-color: rgba(188,53,53,.22); }
+    .shares { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+    .share { display: flex; justify-content: space-between; gap: 8px; background: var(--soft); border: 1px solid #e5dccb; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+    .share span:last-child { color: var(--gold-dark); font-weight: 850; }
+    .mini-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .mini-actions button { min-height: 34px; padding: 0 10px; font-size: 13px; }
 
-    .expense-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+    .chart { display: grid; gap: 10px; }
+    .bar-line { display: grid; grid-template-columns: 95px 1fr 90px; gap: 8px; align-items: center; font-size: 13px; }
+    .bar-track { height: 12px; border-radius: 999px; background: #eee4d4; overflow: hidden; }
+    .bar { height: 100%; border-radius: inherit; background: var(--gold); min-width: 2px; }
+    .bar.production { background: var(--ok); }
+    .bar.credit { background: var(--blue); }
+    .bar.debit { background: var(--danger); }
 
-    .expense-actions button {
-      min-height: 34px;
-      padding: 0 10px;
-      font-size: 13px;
-    }
-
-    .members-admin {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
+    .admin-lock { max-width: 460px; }
+    .hidden { display: none !important; }
     .toast {
       position: fixed;
       left: 50%;
@@ -386,32 +162,28 @@
       color: #fffaf0;
       border-radius: 8px;
       padding: 12px 16px;
-      font-weight: 750;
+      font-weight: 800;
       box-shadow: 0 20px 60px rgba(0,0,0,.45);
       opacity: 0;
       pointer-events: none;
       transition: opacity .2s ease, transform .2s ease;
       z-index: 10;
     }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
 
-    .toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(-6px);
-    }
-
-    @media (max-width: 860px) {
-      .app { padding: 14px; }
+    @media (max-width: 900px) {
       .layout { grid-template-columns: 1fr; }
       .topbar { align-items: stretch; flex-direction: column; }
       .topbar label { max-width: none; }
     }
-
-    @media (max-width: 480px) {
-      .two, .calc { grid-template-columns: 1fr; }
-      .member-buttons { grid-template-columns: 1fr; }
-      header { align-items: flex-start; flex-wrap: wrap; }
+    @media (max-width: 520px) {
+      .two, .three { grid-template-columns: 1fr; }
+      .member-buttons, .person-tabs { grid-template-columns: 1fr; }
+      header { align-items: flex-start; }
       .logo { width: 50px; height: 50px; }
       .music-player { width: 100%; grid-template-columns: 42px 1fr 42px; }
+      .bar-line { grid-template-columns: 78px 1fr; }
+      .bar-line strong { grid-column: 2; }
     }
   </style>
 </head>
@@ -421,95 +193,155 @@
       <img class="logo" src="/logo-inove.png" alt="Atelier Inove">
       <div class="header-copy">
         <h1>Financeiro Atelier Inove</h1>
-        <p class="subtitle">Despesas compartilhadas, divisão automática e totais por sócio.</p>
+        <p class="subtitle">Despesas recorrentes, producao, creditos, debitos e fechamento por socio.</p>
       </div>
       <div class="music-player" aria-label="Player de prosperidade">
-        <button class="player-button" id="prevTrackBtn" type="button" aria-label="Musica anterior">‹</button>
+        <button class="player-button" id="prevTrackBtn" type="button" aria-label="Musica anterior">&lt;</button>
         <button class="player-main secondary" id="musicPlayBtn" type="button" aria-label="Tocar musica">
           <span class="player-title" id="musicTrackTitle">Prosperidade financeira</span>
           <span class="player-status" id="musicStatus">Toque para ouvir</span>
         </button>
-        <button class="player-button" id="nextTrackBtn" type="button" aria-label="Proxima musica">›</button>
+        <button class="player-button" id="nextTrackBtn" type="button" aria-label="Proxima musica">&gt;</button>
       </div>
     </header>
 
-    <main class="layout">
-      <section class="panel">
-        <h2 id="formTitle">Novo lançamento</h2>
-        <form class="form-grid" id="expenseForm">
-          <input type="hidden" id="editingId">
-          <label>
-            Despesa
-            <input id="expenseName" placeholder="Ex: Aluguel, Urgtec, Café" autocomplete="off" required>
-          </label>
-          <label>
-            Tipo
-            <select id="expenseKind">
-              <option value="debit">Débito</option>
-              <option value="credit">Crédito</option>
-            </select>
-          </label>
-          <div class="two">
-            <label>
-              Valor
-              <input id="expenseAmount" inputmode="decimal" placeholder="3500,00" required>
-            </label>
-            <label>
-              Data
-              <input id="expenseDate" type="date" required>
-            </label>
-          </div>
-          <label>
-            Quem participa
-            <div class="member-buttons" id="memberButtons"></div>
-          </label>
-          <div class="calc">
-            <div>
-              <span class="muted">Participantes</span>
-              <strong id="calcCount">0</strong>
-            </div>
-            <div>
-              <span class="muted">Valor por sócio</span>
-              <strong id="calcShare">R$ 0,00</strong>
-            </div>
-          </div>
-          <label>
-            Observações
-            <textarea id="expenseNotes" placeholder="Opcional"></textarea>
-          </label>
-          <div class="actions">
-            <button type="submit" id="saveBtn">Salvar lançamento</button>
-            <button type="button" class="secondary" id="clearBtn">Limpar</button>
-          </div>
-        </form>
+    <nav class="tabs">
+      <button class="tab-button active" data-tab="expenses">Despesas</button>
+      <button class="tab-button secondary" data-tab="recurring">Recorrentes</button>
+      <button class="tab-button secondary" data-tab="admin">Admin</button>
+    </nav>
 
-        <div style="height: 18px"></div>
-        <h2>Sócios</h2>
-        <form class="actions" id="memberForm">
-          <input id="memberName" placeholder="Novo sócio" autocomplete="off">
-          <button type="submit" class="ghost">Adicionar</button>
-        </form>
-        <div class="members-admin" id="membersAdmin"></div>
-      </section>
-
-      <section class="panel">
-        <div class="topbar">
-          <div>
-            <h2>Resumo do mês</h2>
-            <p class="muted" id="summaryText">Carregando...</p>
-          </div>
-          <div class="actions">
-            <label>
-              Mês
-              <input type="month" id="monthFilter">
+    <section class="tab-panel active" id="tab-expenses">
+      <main class="layout">
+        <section class="panel">
+          <h2 id="formTitle">Novo lancamento</h2>
+          <form class="form-grid" id="expenseForm">
+            <input type="hidden" id="editingId">
+            <label>Despesa <input id="expenseName" placeholder="Ex: Aluguel, Urgtec, Cafe" autocomplete="off" required></label>
+            <label>Tipo
+              <select id="expenseKind">
+                <option value="debit">Debito</option>
+                <option value="credit">Credito</option>
+              </select>
             </label>
-            <button class="secondary" id="exportBtn" type="button">Exportar CSV</button>
+            <div class="two">
+              <label>Valor <input id="expenseAmount" inputmode="decimal" placeholder="3500,00" required></label>
+              <label>Data <input id="expenseDate" type="date" required></label>
+            </div>
+            <label>Quem participa <div class="member-buttons" id="memberButtons"></div></label>
+            <label class="row" style="align-items:center; justify-content:flex-start">
+              <input id="expenseRecurring" type="checkbox" style="width:auto; min-height:auto">
+              Deixar como despesa recorrente mensal
+            </label>
+            <div class="cards">
+              <div class="card"><span class="muted">Participantes</span><strong id="calcCount">0</strong></div>
+              <div class="card"><span class="muted">Valor por socio</span><strong id="calcShare">R$ 0,00</strong></div>
+            </div>
+            <label>Observacoes <textarea id="expenseNotes" placeholder="Opcional"></textarea></label>
+            <div class="actions">
+              <button type="submit" id="saveBtn">Salvar lancamento</button>
+              <button type="button" class="secondary" id="clearBtn">Limpar</button>
+            </div>
+          </form>
+
+          <div style="height:18px"></div>
+          <h2>Socios</h2>
+          <form class="actions" id="memberForm">
+            <input id="memberName" placeholder="Novo socio" autocomplete="off">
+            <button type="submit" class="ghost">Adicionar</button>
+          </form>
+          <div class="mini-actions" id="membersAdmin" style="margin-top:12px"></div>
+        </section>
+
+        <section class="panel">
+          <div class="topbar">
+            <div>
+              <h2>Resumo do mes</h2>
+              <p class="muted" id="summaryText">Carregando...</p>
+            </div>
+            <div class="actions">
+              <label>Mes <input type="month" id="monthFilter"></label>
+              <button class="secondary" id="exportBtn" type="button">Exportar CSV</button>
+            </div>
           </div>
+          <div class="cards" id="totals"></div>
+          <div style="height:14px"></div>
+          <div class="list" id="expenseList"></div>
+        </section>
+      </main>
+    </section>
+
+    <section class="tab-panel" id="tab-recurring">
+      <div class="layout">
+        <section class="panel">
+          <h2>Virada do mes</h2>
+          <p class="muted">No fechamento, deixe o mes atual conferido. No dia 01, clique para gerar automaticamente as despesas recorrentes do proximo mes.</p>
+          <div style="height:14px"></div>
+          <label>Gerar para o mes <input type="month" id="generateMonth"></label>
+          <div style="height:12px"></div>
+          <button id="generateRecurringBtn">Gerar recorrentes do mes</button>
+        </section>
+        <section class="panel">
+          <h2>Despesas recorrentes</h2>
+          <div class="list" id="recurringList"></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-admin">
+      <div class="panel admin-lock" id="adminLock">
+        <h2>Acesso do mestre</h2>
+        <p class="muted">Area para controlar producao, creditos, debitos e saldo real por socio.</p>
+        <div style="height:12px"></div>
+        <form class="actions" id="adminPinForm">
+          <input id="adminPin" type="password" placeholder="PIN admin">
+          <button type="submit">Entrar</button>
+        </form>
+      </div>
+
+      <div id="adminPanel" class="hidden">
+        <div class="layout">
+          <section class="panel">
+            <h2>Lancamento admin</h2>
+            <form class="form-grid" id="movementForm">
+              <label>Socio <div class="person-tabs" id="adminPersonButtons"></div></label>
+              <div class="two">
+                <label>Tipo
+                  <select id="movementKind">
+                    <option value="production">Producao</option>
+                    <option value="credit">Credito</option>
+                    <option value="debit">Debito</option>
+                  </select>
+                </label>
+                <label>Valor <input id="movementAmount" inputmode="decimal" placeholder="1000,00" required></label>
+              </div>
+              <label>Data <input id="movementDate" type="date" required></label>
+              <label>Descricao <input id="movementDescription" placeholder="Ex: recebido, ajuste, material pago"></label>
+              <button type="submit">Salvar no admin</button>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="topbar">
+              <div>
+                <h2>Controle por socio</h2>
+                <p class="muted">Producao + creditos - debitos - despesas do mes.</p>
+              </div>
+              <label>Socio
+                <select id="adminMemberFilter"></select>
+              </label>
+            </div>
+            <div class="cards" id="adminCards"></div>
+            <div style="height:14px"></div>
+            <h2>Graficos</h2>
+            <div class="chart" id="adminCharts"></div>
+            <div style="height:14px"></div>
+            <h2>Movimentos</h2>
+            <div class="list" id="movementList"></div>
+          </section>
         </div>
-        <div class="totals" id="totals"></div>
-        <div class="list" id="expenseList"></div>
-      </section>
-    </main>
+      </div>
+    </section>
   </div>
 
   <audio id="prosperityAudio" preload="none"></audio>
@@ -519,17 +351,25 @@
     const state = {
       members: [],
       expenses: [],
+      recurring: [],
+      movements: [],
       totals: {},
+      adminBalances: {},
+      movementTotals: {},
       selected: new Set(),
-      month: new Date().toISOString().slice(0, 7)
+      month: new Date().toISOString().slice(0, 7),
+      adminPin: localStorage.getItem("atelierAdminPin") || "",
+      adminMember: ""
     };
 
     const $ = (id) => document.getElementById(id);
     const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+    const today = () => new Date().toISOString().slice(0, 10);
+    const escapeHtml = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
+    const memberName = (id) => state.members.find((m) => m.id === id)?.name || "Socio";
 
     function parseMoney(value) {
-      const cleaned = String(value || "0").replace(/\./g, "").replace(",", ".");
-      const number = Number.parseFloat(cleaned);
+      const number = Number.parseFloat(String(value || "0").replace(/\./g, "").replace(",", "."));
       return Number.isFinite(number) ? number : 0;
     }
 
@@ -537,144 +377,61 @@
       $("toast").textContent = message;
       $("toast").classList.add("show");
       clearTimeout(showToast.timer);
-      showToast.timer = setTimeout(() => $("toast").classList.remove("show"), 2200);
+      showToast.timer = setTimeout(() => $("toast").classList.remove("show"), 2400);
     }
 
     async function api(path, options = {}) {
       const response = await fetch(path, {
         ...options,
-        headers: { "Content-Type": "application/json", ...(options.headers || {}) }
+        headers: {
+          "Content-Type": "application/json",
+          ...(state.adminPin ? { "X-Admin-Pin": state.adminPin } : {}),
+          ...(options.headers || {})
+        }
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Não foi possível salvar.");
+      if (!response.ok) throw new Error(data.error || "Nao foi possivel salvar.");
       return data;
     }
 
-    async function load() {
+    async function load(month = state.month) {
+      state.month = month;
       const data = await api(`/api/dashboard?month=${encodeURIComponent(state.month)}`);
-      state.members = data.members;
-      state.expenses = data.expenses;
-      state.totals = data.totals;
+      applyDashboard(data);
+    }
+
+    function applyDashboard(data) {
+      state.members = data.members || [];
+      state.expenses = data.expenses || [];
+      state.recurring = data.recurring || [];
+      state.movements = data.movements || [];
+      state.totals = data.totals || {};
+      state.adminBalances = data.admin_balances || {};
+      state.movementTotals = data.movement_totals || {};
+      state.month = data.month || state.month;
+      if (!state.adminMember && state.members[0]) state.adminMember = state.members[0].id;
       render();
     }
 
     function render() {
+      $("monthFilter").value = state.month;
+      $("generateMonth").value = nextMonth(state.month);
       renderMemberButtons();
       renderMembersAdmin();
       renderTotals();
       renderExpenses();
+      renderRecurring();
+      renderAdmin();
       updateCalc();
-      $("monthFilter").value = state.month;
-      const debits = state.expenses.filter((item) => item.kind !== "credit").reduce((sum, item) => sum + item.amount, 0);
-      const credits = state.expenses.filter((item) => item.kind === "credit").reduce((sum, item) => sum + item.amount, 0);
-      $("summaryText").textContent = `${state.expenses.length} lançamentos · débitos ${currency.format(debits)} · créditos ${currency.format(credits)} · saldo ${currency.format(debits - credits)}`;
+      const debits = state.expenses.filter((e) => e.kind !== "credit").reduce((s, e) => s + e.amount, 0);
+      const credits = state.expenses.filter((e) => e.kind === "credit").reduce((s, e) => s + e.amount, 0);
+      $("summaryText").textContent = `${state.expenses.length} lancamentos · debitos ${currency.format(debits)} · creditos ${currency.format(credits)} · saldo ${currency.format(debits - credits)}`;
     }
 
-    function renderMemberButtons() {
-      $("memberButtons").innerHTML = state.members
-        .filter((member) => member.active)
-        .map((member) => `<button type="button" class="member-toggle ${state.selected.has(member.id) ? "active" : ""}" data-member="${member.id}">${member.name}</button>`)
-        .join("");
-    }
-
-    function renderMembersAdmin() {
-      $("membersAdmin").innerHTML = state.members.map((member) => `
-        <span class="pill">${member.name}</span>
-      `).join("");
-    }
-
-    function renderTotals() {
-      $("totals").innerHTML = [
-        `<div class="total-card"><span class="muted">Saldo geral</span><strong>${currency.format(state.expenses.reduce((sum, item) => sum + (item.signed_amount ?? item.amount), 0))}</strong></div>`,
-        ...state.members.map((member) => `
-          <div class="total-card">
-            <span class="muted">${member.name}</span>
-            <strong>${currency.format(state.totals[member.id] || 0)}</strong>
-          </div>
-        `)
-      ].join("");
-    }
-
-    function renderExpenses() {
-      if (!state.expenses.length) {
-        $("expenseList").innerHTML = `<div class="expense"><p class="muted">Nenhum lançamento neste mês.</p></div>`;
-        return;
-      }
-      $("expenseList").innerHTML = state.expenses.map((expense) => {
-        const memberMap = Object.fromEntries(state.members.map((m) => [m.id, m.name]));
-        const isCredit = expense.kind === "credit";
-        const typeLabel = isCredit ? "Crédito" : "Débito";
-        const shares = Object.entries(expense.shares).map(([memberId, value]) => `
-          <div class="share"><span>${memberMap[memberId] || "Sócio"}</span><span>${currency.format(value)}</span></div>
-        `).join("");
-        return `
-          <article class="expense">
-            <div class="expense-head">
-              <div>
-                <div class="expense-title">${escapeHtml(expense.name)}</div>
-                <div class="muted">${formatDate(expense.date)} · ${typeLabel} · ${expense.participant_count} participantes</div>
-              </div>
-              <span class="pill">${currency.format(expense.amount)}</span>
-            </div>
-            <div class="shares">${shares}</div>
-            ${expense.notes ? `<p class="muted">${escapeHtml(expense.notes)}</p>` : ""}
-            <div class="expense-actions">
-              <button class="secondary" type="button" data-edit="${expense.id}">Editar</button>
-              <button class="danger" type="button" data-delete="${expense.id}">Excluir</button>
-            </div>
-          </article>
-        `;
-      }).join("");
-    }
-
-    function updateCalc() {
-      const amount = parseMoney($("expenseAmount").value);
-      const sign = $("expenseKind").value === "credit" ? -1 : 1;
-      const count = state.selected.size;
-      $("calcCount").textContent = String(count);
-      $("calcShare").textContent = currency.format(count ? (amount / count) * sign : 0);
-      renderMemberButtons();
-    }
-
-    function resetForm() {
-      $("editingId").value = "";
-      $("formTitle").textContent = "Novo lançamento";
-      $("saveBtn").textContent = "Salvar lançamento";
-      $("expenseForm").reset();
-      $("expenseKind").value = "debit";
-      $("expenseDate").value = new Date().toISOString().slice(0, 10);
-      state.selected = new Set(state.members.filter((m) => m.active).map((m) => m.id));
-      updateCalc();
-    }
-
-    function editExpense(id) {
-      const expense = state.expenses.find((item) => item.id === id);
-      if (!expense) return;
-      $("editingId").value = expense.id;
-      $("formTitle").textContent = "Editar lançamento";
-      $("saveBtn").textContent = "Atualizar lançamento";
-      $("expenseName").value = expense.name;
-      $("expenseKind").value = expense.kind || "debit";
-      $("expenseAmount").value = String(expense.amount.toFixed(2)).replace(".", ",");
-      $("expenseDate").value = expense.date;
-      $("expenseNotes").value = expense.notes || "";
-      state.selected = new Set(expense.participants);
-      updateCalc();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-
-    async function deleteExpense(id) {
-      if (!confirm("Excluir esta despesa?")) return;
-      const data = await api(`/api/expenses/${id}`, { method: "DELETE" });
-      applyDashboard(data);
-      showToast("Despesa excluída.");
-    }
-
-    function applyDashboard(data) {
-      state.members = data.members;
-      state.expenses = data.expenses;
-      state.totals = data.totals;
-      render();
+    function nextMonth(month) {
+      const [y, m] = month.split("-").map(Number);
+      const date = new Date(y, m, 1);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
     }
 
     function formatDate(value) {
@@ -683,8 +440,155 @@
       return `${day}/${month}/${year}`;
     }
 
-    function escapeHtml(text) {
-      return String(text).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+    function renderMemberButtons() {
+      $("memberButtons").innerHTML = state.members.filter((m) => m.active).map((member) => `
+        <button type="button" class="member-toggle ${state.selected.has(member.id) ? "active" : ""}" data-member="${member.id}">${escapeHtml(member.name)}</button>
+      `).join("");
+    }
+
+    function renderMembersAdmin() {
+      $("membersAdmin").innerHTML = state.members.map((member) => `<span class="pill">${escapeHtml(member.name)}</span>`).join("");
+    }
+
+    function renderTotals() {
+      const net = state.expenses.reduce((sum, item) => sum + (item.signed_amount ?? item.amount), 0);
+      $("totals").innerHTML = [
+        `<div class="card"><span class="muted">Saldo geral</span><strong>${currency.format(net)}</strong></div>`,
+        ...state.members.map((member) => `
+          <div class="card">
+            <span class="muted">${escapeHtml(member.name)}</span>
+            <strong>${currency.format(state.totals[member.id] || 0)}</strong>
+          </div>
+        `)
+      ].join("");
+    }
+
+    function renderExpenses() {
+      if (!state.expenses.length) {
+        $("expenseList").innerHTML = `<div class="expense"><p class="muted">Nenhum lancamento neste mes.</p></div>`;
+        return;
+      }
+      $("expenseList").innerHTML = state.expenses.map((expense) => {
+        const isCredit = expense.kind === "credit";
+        const shares = Object.entries(expense.shares || {}).map(([memberId, value]) => `
+          <div class="share"><span>${escapeHtml(memberName(memberId))}</span><span>${currency.format(value)}</span></div>
+        `).join("");
+        return `
+          <article class="expense">
+            <div class="row">
+              <div>
+                <div class="title">${escapeHtml(expense.name)}</div>
+                <div class="muted">${formatDate(expense.date)} · ${isCredit ? "Credito" : "Debito"} · ${expense.participant_count} participantes</div>
+              </div>
+              <span class="pill ${isCredit ? "green" : ""}">${currency.format(expense.amount)}</span>
+            </div>
+            <div class="shares">${shares}</div>
+            ${expense.notes ? `<p class="muted">${escapeHtml(expense.notes)}</p>` : ""}
+            <div class="mini-actions">
+              <button class="secondary" type="button" data-edit="${expense.id}">Editar</button>
+              ${expense.recurring_template_id ? `<span class="pill">Recorrente</span>` : `<button class="ghost" type="button" data-recurring="${expense.id}">Tornar recorrente</button>`}
+              <button class="danger" type="button" data-delete="${expense.id}">Excluir</button>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderRecurring() {
+      if (!state.recurring.length) {
+        $("recurringList").innerHTML = `<div class="expense"><p class="muted">Nenhuma despesa recorrente ainda. Use o checkbox no cadastro ou o botao "Tornar recorrente".</p></div>`;
+        return;
+      }
+      $("recurringList").innerHTML = state.recurring.map((template) => `
+        <article class="expense">
+          <div class="row">
+            <div>
+              <div class="title">${escapeHtml(template.name)}</div>
+              <div class="muted">Dia ${template.day || 1} · ${template.kind === "credit" ? "Credito" : "Debito"} · ${(template.participants || []).map(memberName).join(", ")}</div>
+            </div>
+            <span class="pill">${currency.format(template.amount || 0)}</span>
+          </div>
+          ${template.notes ? `<p class="muted">${escapeHtml(template.notes)}</p>` : ""}
+          <div class="mini-actions">
+            <button class="${template.active ? "secondary" : "active"}" type="button" data-toggle-recurring="${template.id}" data-active="${template.active ? "0" : "1"}">${template.active ? "Pausar" : "Ativar"}</button>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function renderAdmin() {
+      $("adminLock").classList.toggle("hidden", Boolean(state.adminPin));
+      $("adminPanel").classList.toggle("hidden", !state.adminPin);
+      if (!state.adminPin) return;
+
+      $("adminPersonButtons").innerHTML = state.members.map((member) => `
+        <button type="button" class="person-tab ${state.adminMember === member.id ? "active" : "secondary"}" data-admin-member="${member.id}">${escapeHtml(member.name)}</button>
+      `).join("");
+      $("adminMemberFilter").innerHTML = state.members.map((member) => `<option value="${member.id}">${escapeHtml(member.name)}</option>`).join("");
+      $("adminMemberFilter").value = state.adminMember;
+
+      const balance = state.adminBalances[state.adminMember] || {};
+      $("adminCards").innerHTML = `
+        <div class="card ok"><span class="muted">Producao</span><strong>${currency.format(balance.production || 0)}</strong></div>
+        <div class="card ok"><span class="muted">Creditos</span><strong>${currency.format(balance.credit || 0)}</strong></div>
+        <div class="card warn"><span class="muted">Debitos manuais</span><strong>${currency.format(balance.debit || 0)}</strong></div>
+        <div class="card warn"><span class="muted">Despesas rateadas</span><strong>${currency.format(balance.expenses || 0)}</strong></div>
+        <div class="card ${(balance.balance || 0) >= 0 ? "ok" : "warn"}"><span class="muted">Saldo final</span><strong>${currency.format(balance.balance || 0)}</strong></div>
+      `;
+      renderCharts();
+      renderMovements();
+    }
+
+    function renderCharts() {
+      const maxValue = Math.max(1, ...state.members.flatMap((member) => {
+        const b = state.adminBalances[member.id] || {};
+        return [b.production || 0, b.credit || 0, b.debit || 0, b.expenses || 0];
+      }));
+      $("adminCharts").innerHTML = state.members.map((member) => {
+        const b = state.adminBalances[member.id] || {};
+        return `
+          <div class="card">
+            <h3>${escapeHtml(member.name)}</h3>
+            ${barLine("Producao", b.production || 0, maxValue, "production")}
+            ${barLine("Creditos", b.credit || 0, maxValue, "credit")}
+            ${barLine("Debitos", (b.debit || 0) + (b.expenses || 0), maxValue, "debit")}
+          </div>
+        `;
+      }).join("");
+    }
+
+    function barLine(label, value, maxValue, type) {
+      const width = Math.max(2, Math.round((Math.abs(value) / maxValue) * 100));
+      return `
+        <div class="bar-line">
+          <span>${label}</span>
+          <div class="bar-track"><div class="bar ${type}" style="width:${width}%"></div></div>
+          <strong>${currency.format(value)}</strong>
+        </div>
+      `;
+    }
+
+    function renderMovements() {
+      const list = state.movements.filter((movement) => !state.adminMember || movement.member_id === state.adminMember);
+      if (!list.length) {
+        $("movementList").innerHTML = `<div class="movement"><p class="muted">Nenhum lancamento admin para este socio no mes.</p></div>`;
+        return;
+      }
+      $("movementList").innerHTML = list.map((movement) => {
+        const label = movement.kind === "production" ? "Producao" : movement.kind === "credit" ? "Credito" : "Debito";
+        return `
+          <article class="movement">
+            <div class="row">
+              <div>
+                <div class="title">${label}</div>
+                <div class="muted">${formatDate(movement.date)} · ${escapeHtml(movement.description || "Sem descricao")}</div>
+              </div>
+              <span class="pill ${movement.kind === "debit" ? "red" : "green"}">${currency.format(movement.amount)}</span>
+            </div>
+            <div class="mini-actions"><button class="danger" type="button" data-delete-movement="${movement.id}">Excluir</button></div>
+          </article>
+        `;
+      }).join("");
     }
 
     const prosperityTracks = [
@@ -708,19 +612,16 @@
       if (!audio || !playButton || !prevButton || !nextButton || !title || !status) return;
       let trackIndex = Number(localStorage.getItem("atelierProsperityTrack") || 0);
       if (!prosperityTracks[trackIndex]) trackIndex = 0;
-
       const setTrack = (index) => {
         trackIndex = (index + prosperityTracks.length) % prosperityTracks.length;
         localStorage.setItem("atelierProsperityTrack", String(trackIndex));
         audio.src = prosperityTracks[trackIndex].src;
         title.textContent = prosperityTracks[trackIndex].title;
       };
-
       const setPlaying = (playing) => {
         playButton.classList.toggle("playing", playing);
         status.textContent = playing ? "Tocando agora" : "Toque para ouvir";
       };
-
       const play = async () => {
         try {
           if (!audio.src) setTrack(trackIndex);
@@ -731,7 +632,6 @@
           showToast("Toque novamente para liberar o audio.");
         }
       };
-
       playButton.addEventListener("click", () => audio.paused ? play() : audio.pause());
       prevButton.addEventListener("click", () => { setTrack(trackIndex - 1); play(); });
       nextButton.addEventListener("click", () => { setTrack(trackIndex + 1); play(); });
@@ -740,17 +640,77 @@
       setTrack(trackIndex);
     }
 
+    function updateCalc() {
+      const amount = parseMoney($("expenseAmount").value);
+      const sign = $("expenseKind").value === "credit" ? -1 : 1;
+      const count = state.selected.size;
+      $("calcCount").textContent = String(count);
+      $("calcShare").textContent = currency.format(count ? (amount / count) * sign : 0);
+      renderMemberButtons();
+    }
+
+    function resetForm() {
+      $("editingId").value = "";
+      $("formTitle").textContent = "Novo lancamento";
+      $("saveBtn").textContent = "Salvar lancamento";
+      $("expenseForm").reset();
+      $("expenseKind").value = "debit";
+      $("expenseDate").value = today();
+      state.selected = new Set(state.members.filter((m) => m.active).map((m) => m.id));
+      updateCalc();
+    }
+
+    function editExpense(id) {
+      const expense = state.expenses.find((item) => item.id === id);
+      if (!expense) return;
+      $("editingId").value = expense.id;
+      $("formTitle").textContent = "Editar lancamento";
+      $("saveBtn").textContent = "Atualizar lancamento";
+      $("expenseName").value = expense.name;
+      $("expenseKind").value = expense.kind || "debit";
+      $("expenseAmount").value = String(expense.amount.toFixed(2)).replace(".", ",");
+      $("expenseDate").value = expense.date;
+      $("expenseNotes").value = expense.notes || "";
+      $("expenseRecurring").checked = Boolean(expense.recurring_template_id);
+      state.selected = new Set(expense.participants);
+      updateCalc();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function deleteExpense(id) {
+      if (!confirm("Excluir este lancamento?")) return;
+      applyDashboard(await api(`/api/expenses/${id}`, { method: "DELETE" }));
+      showToast("Lancamento excluido.");
+    }
+
+    async function makeRecurring(id) {
+      applyDashboard(await api(`/api/expenses/${id}/recurring`, { method: "POST", body: "{}" }));
+      showToast("Despesa marcada como recorrente.");
+    }
+
+    function switchTab(name) {
+      document.querySelectorAll(".tab-button").forEach((button) => {
+        const active = button.dataset.tab === name;
+        button.classList.toggle("active", active);
+        button.classList.toggle("secondary", !active);
+      });
+      document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.toggle("active", panel.id === `tab-${name}`));
+    }
+
+    document.querySelector(".tabs").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-tab]");
+      if (button) switchTab(button.dataset.tab);
+    });
+
     $("memberButtons").addEventListener("click", (event) => {
       const button = event.target.closest("[data-member]");
       if (!button) return;
-      const memberId = button.dataset.member;
-      if (state.selected.has(memberId)) state.selected.delete(memberId);
-      else state.selected.add(memberId);
+      state.selected.has(button.dataset.member) ? state.selected.delete(button.dataset.member) : state.selected.add(button.dataset.member);
       updateCalc();
     });
-
     $("expenseAmount").addEventListener("input", updateCalc);
     $("expenseKind").addEventListener("change", updateCalc);
+    $("clearBtn").addEventListener("click", resetForm);
 
     $("expenseForm").addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -761,18 +721,16 @@
         kind: $("expenseKind").value,
         date: $("expenseDate").value,
         participants: [...state.selected],
-        notes: $("expenseNotes").value
+        notes: $("expenseNotes").value,
+        recurring: $("expenseRecurring").checked
       };
-      const data = await api(editingId ? `/api/expenses/${editingId}` : "/api/expenses", {
+      applyDashboard(await api(editingId ? `/api/expenses/${editingId}` : "/api/expenses", {
         method: editingId ? "PATCH" : "POST",
         body: JSON.stringify(payload)
-      });
-      applyDashboard(data);
+      }));
       resetForm();
-      showToast(editingId ? "Lançamento atualizado." : "Lançamento cadastrado.");
+      showToast(editingId ? "Lancamento atualizado." : "Lancamento cadastrado.");
     });
-
-    $("clearBtn").addEventListener("click", resetForm);
 
     $("memberForm").addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -783,30 +741,88 @@
       applyDashboard(data);
       state.selected.add(data.members[data.members.length - 1].id);
       updateCalc();
-      showToast("Sócio adicionado.");
+      showToast("Socio adicionado.");
     });
 
     $("expenseList").addEventListener("click", (event) => {
       const edit = event.target.closest("[data-edit]");
       const del = event.target.closest("[data-delete]");
+      const recurring = event.target.closest("[data-recurring]");
       if (edit) editExpense(edit.dataset.edit);
       if (del) deleteExpense(del.dataset.delete);
+      if (recurring) makeRecurring(recurring.dataset.recurring);
     });
 
-    $("monthFilter").addEventListener("change", async () => {
-      state.month = $("monthFilter").value || new Date().toISOString().slice(0, 7);
-      await load();
+    $("recurringList").addEventListener("click", async (event) => {
+      const toggle = event.target.closest("[data-toggle-recurring]");
+      if (!toggle) return;
+      applyDashboard(await api(`/api/recurring/${toggle.dataset.toggleRecurring}?month=${encodeURIComponent(state.month)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ active: toggle.dataset.active === "1" })
+      }));
     });
 
-    $("exportBtn").addEventListener("click", () => {
-      window.location.href = `/api/export.csv?month=${encodeURIComponent(state.month)}`;
+    $("generateRecurringBtn").addEventListener("click", async () => {
+      const month = $("generateMonth").value || nextMonth(state.month);
+      const data = await api("/api/recurring/generate", { method: "POST", body: JSON.stringify({ month }) });
+      applyDashboard(data);
+      showToast(`${data.created_recurring || 0} recorrentes geradas para ${month}.`);
+      switchTab("expenses");
     });
 
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/service-worker.js").catch(() => {});
-    }
+    $("monthFilter").addEventListener("change", () => load($("monthFilter").value || new Date().toISOString().slice(0, 7)));
+    $("exportBtn").addEventListener("click", () => { window.location.href = `/api/export.csv?month=${encodeURIComponent(state.month)}`; });
 
-    $("expenseDate").value = new Date().toISOString().slice(0, 10);
+    $("adminPinForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      state.adminPin = $("adminPin").value.trim();
+      await api("/api/admin/unlock", { method: "POST", body: "{}" });
+      localStorage.setItem("atelierAdminPin", state.adminPin);
+      renderAdmin();
+      showToast("Admin liberado.");
+    });
+
+    $("adminPersonButtons").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-admin-member]");
+      if (!button) return;
+      state.adminMember = button.dataset.adminMember;
+      renderAdmin();
+    });
+    $("adminMemberFilter").addEventListener("change", () => {
+      state.adminMember = $("adminMemberFilter").value;
+      renderAdmin();
+    });
+
+    $("movementForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!state.adminMember) return showToast("Selecione um socio.");
+      const payload = {
+        member_id: state.adminMember,
+        kind: $("movementKind").value,
+        amount: $("movementAmount").value,
+        date: $("movementDate").value,
+        description: $("movementDescription").value
+      };
+      applyDashboard(await api(`/api/admin/movements?month=${encodeURIComponent(state.month)}`, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      }));
+      $("movementAmount").value = "";
+      $("movementDescription").value = "";
+      showToast("Lancamento admin salvo.");
+    });
+
+    $("movementList").addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-delete-movement]");
+      if (!button) return;
+      if (!confirm("Excluir lancamento admin?")) return;
+      applyDashboard(await api(`/api/admin/movements/${button.dataset.deleteMovement}?month=${encodeURIComponent(state.month)}`, { method: "DELETE" }));
+      showToast("Lancamento admin excluido.");
+    });
+
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+    $("expenseDate").value = today();
+    $("movementDate").value = today();
     $("monthFilter").value = state.month;
     initProsperityPlayer();
     load().then(resetForm).catch((error) => showToast(error.message));
