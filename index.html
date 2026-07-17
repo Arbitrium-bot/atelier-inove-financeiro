@@ -142,6 +142,29 @@
     .share span:last-child { color: var(--gold-dark); font-weight: 850; }
     .mini-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .mini-actions button { min-height: 34px; padding: 0 10px; font-size: 13px; }
+    .search-panel {
+      display: grid;
+      gap: 12px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 14px 0;
+    }
+    .search-controls { display: grid; grid-template-columns: 1.1fr .8fr auto auto; gap: 10px; align-items: end; }
+    .search-results { display: grid; gap: 10px; }
+    .group-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .group-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+    .group-share { background: var(--soft); border: 1px solid #e5dccb; border-radius: 8px; padding: 9px 10px; }
+    .group-share span { display: block; color: var(--muted); font-size: 12px; font-weight: 800; }
+    .group-share strong { display: block; margin-top: 3px; color: var(--gold-dark); }
 
     .chart { display: grid; gap: 10px; }
     .bar-line { display: grid; grid-template-columns: 95px 1fr 90px; gap: 8px; align-items: center; font-size: 13px; }
@@ -184,6 +207,7 @@
       .music-player { width: 100%; grid-template-columns: 42px 1fr 42px; }
       .bar-line { grid-template-columns: 78px 1fr; }
       .bar-line strong { grid-column: 2; }
+      .search-controls { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -265,6 +289,26 @@
             </div>
           </div>
           <div class="cards" id="totals"></div>
+          <div class="search-panel">
+            <div class="topbar" style="margin-bottom:0">
+              <div>
+                <h2>Buscar agrupado</h2>
+                <p class="muted">Pesquise uma despesa, pessoa ou socio e veja o total do mes.</p>
+              </div>
+            </div>
+            <div class="search-controls">
+              <label>Lupa <input id="groupSearch" placeholder="Ex: Lourdes, limpeza, Deimir"></label>
+              <label>Tipo
+                <select id="groupMode">
+                  <option value="expense">Por despesa/pessoa</option>
+                  <option value="member">Por socio</option>
+                </select>
+              </label>
+              <button id="groupSearchBtn" type="button">Pesquisar</button>
+              <button id="groupClearBtn" class="secondary" type="button">Limpar</button>
+            </div>
+            <div class="search-results" id="groupResults"></div>
+          </div>
           <div style="height:14px"></div>
           <div class="list" id="expenseList"></div>
         </section>
@@ -332,6 +376,24 @@
               </label>
             </div>
             <div class="cards" id="adminCards"></div>
+            <div class="search-panel">
+              <div>
+                <h2>Buscar agrupado no admin</h2>
+                <p class="muted">Cruze despesas, producao, creditos e debitos do mes.</p>
+              </div>
+              <div class="search-controls">
+                <label>Lupa <input id="adminGroupSearch" placeholder="Ex: Lourdes, Lucas, Deimir"></label>
+                <label>Tipo
+                  <select id="adminGroupMode">
+                    <option value="member">Por socio</option>
+                    <option value="expense">Por despesa/pessoa</option>
+                  </select>
+                </label>
+                <button id="adminGroupSearchBtn" type="button">Pesquisar</button>
+                <button id="adminGroupClearBtn" class="secondary" type="button">Limpar</button>
+              </div>
+              <div class="search-results" id="adminGroupResults"></div>
+            </div>
             <div style="height:14px"></div>
             <h2>Graficos</h2>
             <div class="chart" id="adminCharts"></div>
@@ -359,7 +421,11 @@
       selected: new Set(),
       month: new Date().toISOString().slice(0, 7),
       adminPin: localStorage.getItem("atelierAdminPin") || "",
-      adminMember: ""
+      adminMember: "",
+      groupQuery: "",
+      groupMode: "expense",
+      adminGroupQuery: "",
+      adminGroupMode: "member"
     };
 
     const $ = (id) => document.getElementById(id);
@@ -367,6 +433,7 @@
     const today = () => new Date().toISOString().slice(0, 10);
     const escapeHtml = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
     const memberName = (id) => state.members.find((m) => m.id === id)?.name || "Socio";
+    const norm = (text) => String(text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
     function parseMoney(value) {
       const number = Number.parseFloat(String(value || "0").replace(/\./g, "").replace(",", "."));
@@ -419,6 +486,7 @@
       renderMemberButtons();
       renderMembersAdmin();
       renderTotals();
+      renderGroupedSearch();
       renderExpenses();
       renderRecurring();
       renderAdmin();
@@ -461,6 +529,102 @@
           </div>
         `)
       ].join("");
+    }
+
+    function emptyMemberTotals() {
+      return Object.fromEntries(state.members.map((member) => [member.id, 0]));
+    }
+
+    function addShares(target, expense) {
+      Object.entries(expense.shares || {}).forEach(([memberId, value]) => {
+        target[memberId] = Number(((target[memberId] || 0) + Number(value || 0)).toFixed(2));
+      });
+    }
+
+    function renderShareGrid(shares) {
+      return state.members.map((member) => `
+        <div class="group-share">
+          <span>${escapeHtml(member.name)}</span>
+          <strong>${currency.format(shares[member.id] || 0)}</strong>
+        </div>
+      `).join("");
+    }
+
+    function renderGroupedSearch() {
+      $("groupSearch").value = state.groupQuery;
+      $("groupMode").value = state.groupMode;
+      const query = norm(state.groupQuery);
+      if (!query) {
+        $("groupResults").innerHTML = `<p class="muted">Digite uma despesa, pessoa ou socio para agrupar os lancamentos deste mes.</p>`;
+        return;
+      }
+
+      if (state.groupMode === "member") {
+        const members = state.members.filter((member) => norm(member.name).includes(query));
+        if (!members.length) {
+          $("groupResults").innerHTML = `<p class="muted">Nenhum socio encontrado para "${escapeHtml(state.groupQuery)}".</p>`;
+          return;
+        }
+        $("groupResults").innerHTML = members.map((member) => {
+          const expenses = state.expenses.filter((expense) => expense.shares && expense.shares[member.id] !== undefined);
+          const totalSocio = expenses.reduce((sum, expense) => sum + Number(expense.shares[member.id] || 0), 0);
+          const totalGeral = expenses.reduce((sum, expense) => sum + Number(expense.signed_amount ?? expense.amount ?? 0), 0);
+          const linhas = expenses.map((expense) => `
+            <div class="share">
+              <span>${escapeHtml(expense.name)} · ${formatDate(expense.date)}</span>
+              <span>${currency.format(expense.shares[member.id] || 0)}</span>
+            </div>
+          `).join("");
+          return `
+            <article class="group-card">
+              <div class="row">
+                <div>
+                  <div class="title">${escapeHtml(member.name)}</div>
+                  <div class="muted">${expenses.length} lancamento(s) no mes · total geral ${currency.format(totalGeral)}</div>
+                </div>
+                <span class="pill">${currency.format(totalSocio)}</span>
+              </div>
+              <div class="shares">${linhas || `<p class="muted">Sem lancamentos para este socio no mes.</p>`}</div>
+            </article>
+          `;
+        }).join("");
+        return;
+      }
+
+      const found = state.expenses.filter((expense) => {
+        const haystack = [expense.name, expense.notes, ...(expense.participants || []).map(memberName)].map(norm).join(" ");
+        return haystack.includes(query);
+      });
+      if (!found.length) {
+        $("groupResults").innerHTML = `<p class="muted">Nenhum lancamento encontrado para "${escapeHtml(state.groupQuery)}".</p>`;
+        return;
+      }
+
+      const groups = new Map();
+      found.forEach((expense) => {
+        const key = norm(expense.name);
+        if (!groups.has(key)) {
+          groups.set(key, { name: expense.name, count: 0, total: 0, shares: emptyMemberTotals(), dates: [] });
+        }
+        const group = groups.get(key);
+        group.count += 1;
+        group.total = Number((group.total + Number(expense.signed_amount ?? expense.amount ?? 0)).toFixed(2));
+        group.dates.push(formatDate(expense.date));
+        addShares(group.shares, expense);
+      });
+
+      $("groupResults").innerHTML = [...groups.values()].sort((a, b) => Math.abs(b.total) - Math.abs(a.total)).map((group) => `
+        <article class="group-card">
+          <div class="row">
+            <div>
+              <div class="title">${escapeHtml(group.name)}</div>
+              <div class="muted">${group.count} lancamento(s) · ${[...new Set(group.dates)].join(", ")}</div>
+            </div>
+            <span class="pill">${currency.format(group.total)}</span>
+          </div>
+          <div class="group-grid">${renderShareGrid(group.shares)}</div>
+        </article>
+      `).join("");
     }
 
     function renderExpenses() {
@@ -537,6 +701,7 @@
       `;
       renderCharts();
       renderMovements();
+      renderAdminGroupedSearch();
     }
 
     function renderCharts() {
@@ -589,6 +754,114 @@
           </article>
         `;
       }).join("");
+    }
+
+    function movementKindLabel(kind) {
+      return kind === "production" ? "Producao" : kind === "credit" ? "Credito" : "Debito";
+    }
+
+    function renderAdminGroupedSearch() {
+      if (!$("adminGroupResults")) return;
+      $("adminGroupSearch").value = state.adminGroupQuery;
+      $("adminGroupMode").value = state.adminGroupMode;
+      const query = norm(state.adminGroupQuery);
+      if (!query) {
+        $("adminGroupResults").innerHTML = `<p class="muted">Digite um socio, despesa ou pessoa para conferir o fechamento admin do mes.</p>`;
+        return;
+      }
+
+      if (state.adminGroupMode === "member") {
+        const members = state.members.filter((member) => norm(member.name).includes(query));
+        if (!members.length) {
+          $("adminGroupResults").innerHTML = `<p class="muted">Nenhum socio encontrado para "${escapeHtml(state.adminGroupQuery)}".</p>`;
+          return;
+        }
+        $("adminGroupResults").innerHTML = members.map((member) => {
+          const balance = state.adminBalances[member.id] || {};
+          const memberExpenses = state.expenses.filter((expense) => expense.shares && expense.shares[member.id] !== undefined);
+          const memberMovements = state.movements.filter((movement) => movement.member_id === member.id);
+          const expenseLines = memberExpenses.map((expense) => `
+            <div class="share"><span>${escapeHtml(expense.name)} · ${formatDate(expense.date)}</span><span>${currency.format(expense.shares[member.id] || 0)}</span></div>
+          `).join("");
+          const movementLines = memberMovements.map((movement) => `
+            <div class="share"><span>${movementKindLabel(movement.kind)} · ${escapeHtml(movement.description || "Sem descricao")}</span><span>${currency.format(movement.amount || 0)}</span></div>
+          `).join("");
+          return `
+            <article class="group-card">
+              <div class="row">
+                <div>
+                  <div class="title">${escapeHtml(member.name)}</div>
+                  <div class="muted">${memberExpenses.length} despesa(s) · ${memberMovements.length} movimento(s) admin</div>
+                </div>
+                <span class="pill ${(balance.balance || 0) >= 0 ? "green" : "red"}">${currency.format(balance.balance || 0)}</span>
+              </div>
+              <div class="group-grid">
+                <div class="group-share"><span>Producao</span><strong>${currency.format(balance.production || 0)}</strong></div>
+                <div class="group-share"><span>Creditos</span><strong>${currency.format(balance.credit || 0)}</strong></div>
+                <div class="group-share"><span>Debitos manuais</span><strong>${currency.format(balance.debit || 0)}</strong></div>
+                <div class="group-share"><span>Despesas rateadas</span><strong>${currency.format(balance.expenses || 0)}</strong></div>
+              </div>
+              <div class="shares">${expenseLines || `<p class="muted">Sem despesas rateadas para este socio.</p>`}</div>
+              <div class="shares">${movementLines || `<p class="muted">Sem movimentos admin para este socio.</p>`}</div>
+            </article>
+          `;
+        }).join("");
+        return;
+      }
+
+      const foundExpenses = state.expenses.filter((expense) => {
+        const haystack = [expense.name, expense.notes, ...(expense.participants || []).map(memberName)].map(norm).join(" ");
+        return haystack.includes(query);
+      });
+      const foundMovements = state.movements.filter((movement) => {
+        const haystack = [movement.description, movementKindLabel(movement.kind), memberName(movement.member_id)].map(norm).join(" ");
+        return haystack.includes(query);
+      });
+      if (!foundExpenses.length && !foundMovements.length) {
+        $("adminGroupResults").innerHTML = `<p class="muted">Nada encontrado para "${escapeHtml(state.adminGroupQuery)}" no admin deste mes.</p>`;
+        return;
+      }
+
+      const expenseGroups = new Map();
+      foundExpenses.forEach((expense) => {
+        const key = norm(expense.name);
+        if (!expenseGroups.has(key)) expenseGroups.set(key, { name: expense.name, count: 0, total: 0, shares: emptyMemberTotals() });
+        const group = expenseGroups.get(key);
+        group.count += 1;
+        group.total = Number((group.total + Number(expense.signed_amount ?? expense.amount ?? 0)).toFixed(2));
+        addShares(group.shares, expense);
+      });
+      const movementGroups = new Map();
+      foundMovements.forEach((movement) => {
+        const name = movement.description || movementKindLabel(movement.kind);
+        const key = `${movement.kind}-${norm(name)}`;
+        if (!movementGroups.has(key)) movementGroups.set(key, { name, kind: movement.kind, count: 0, total: 0, members: emptyMemberTotals() });
+        const group = movementGroups.get(key);
+        group.count += 1;
+        group.total = Number((group.total + Number(movement.signed_amount ?? movement.amount ?? 0)).toFixed(2));
+        group.members[movement.member_id] = Number(((group.members[movement.member_id] || 0) + Number(movement.signed_amount ?? movement.amount ?? 0)).toFixed(2));
+      });
+
+      $("adminGroupResults").innerHTML = [
+        ...[...expenseGroups.values()].map((group) => `
+          <article class="group-card">
+            <div class="row">
+              <div><div class="title">${escapeHtml(group.name)}</div><div class="muted">${group.count} despesa(s) rateada(s)</div></div>
+              <span class="pill">${currency.format(group.total)}</span>
+            </div>
+            <div class="group-grid">${renderShareGrid(group.shares)}</div>
+          </article>
+        `),
+        ...[...movementGroups.values()].map((group) => `
+          <article class="group-card">
+            <div class="row">
+              <div><div class="title">${escapeHtml(group.name)}</div><div class="muted">${group.count} movimento(s) · ${movementKindLabel(group.kind)}</div></div>
+              <span class="pill ${group.kind === "debit" ? "red" : "green"}">${currency.format(group.total)}</span>
+            </div>
+            <div class="group-grid">${renderShareGrid(group.members)}</div>
+          </article>
+        `)
+      ].join("");
     }
 
     const prosperityTracks = [
@@ -772,6 +1045,48 @@
 
     $("monthFilter").addEventListener("change", () => load($("monthFilter").value || new Date().toISOString().slice(0, 7)));
     $("exportBtn").addEventListener("click", () => { window.location.href = `/api/export.csv?month=${encodeURIComponent(state.month)}`; });
+    $("groupSearchBtn").addEventListener("click", () => {
+      state.groupQuery = $("groupSearch").value.trim();
+      state.groupMode = $("groupMode").value;
+      renderGroupedSearch();
+    });
+    $("groupSearch").addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      state.groupQuery = $("groupSearch").value.trim();
+      state.groupMode = $("groupMode").value;
+      renderGroupedSearch();
+    });
+    $("groupMode").addEventListener("change", () => {
+      state.groupMode = $("groupMode").value;
+      renderGroupedSearch();
+    });
+    $("groupClearBtn").addEventListener("click", () => {
+      state.groupQuery = "";
+      $("groupSearch").value = "";
+      renderGroupedSearch();
+    });
+    $("adminGroupSearchBtn").addEventListener("click", () => {
+      state.adminGroupQuery = $("adminGroupSearch").value.trim();
+      state.adminGroupMode = $("adminGroupMode").value;
+      renderAdminGroupedSearch();
+    });
+    $("adminGroupSearch").addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      state.adminGroupQuery = $("adminGroupSearch").value.trim();
+      state.adminGroupMode = $("adminGroupMode").value;
+      renderAdminGroupedSearch();
+    });
+    $("adminGroupMode").addEventListener("change", () => {
+      state.adminGroupMode = $("adminGroupMode").value;
+      renderAdminGroupedSearch();
+    });
+    $("adminGroupClearBtn").addEventListener("click", () => {
+      state.adminGroupQuery = "";
+      $("adminGroupSearch").value = "";
+      renderAdminGroupedSearch();
+    });
 
     $("adminPinForm").addEventListener("submit", async (event) => {
       event.preventDefault();
