@@ -89,14 +89,44 @@ def month_first_day(month):
 def normalize_db(data):
     data.setdefault("members", [])
     data.setdefault("expenses", [])
+    data.setdefault("expense_types", [])
     data.setdefault("recurring", [])
     data.setdefault("movements", [])
+    known_type_names = {str(t.get("name", "")).strip().lower() for t in data["expense_types"]}
     for expense in data["expenses"]:
         expense.setdefault("kind", expense.get("type") or "debit")
         expense.setdefault("paid", False)
         expense.setdefault("recurring_template_id", None)
+        expense.setdefault("expense_type_id", None)
         expense.setdefault("created_at", now_iso())
         expense.setdefault("updated_at", now_iso())
+        name = str(expense.get("name", "")).strip()
+        if name and name.lower() not in known_type_names:
+            expense_type = {
+                "id": slug(name),
+                "name": name,
+                "active": True,
+                "flexible": True,
+                "created_at": expense.get("created_at", now_iso()),
+                "updated_at": now_iso(),
+            }
+            existing_ids = {t["id"] for t in data["expense_types"]}
+            original = expense_type["id"]
+            counter = 2
+            while expense_type["id"] in existing_ids:
+                expense_type["id"] = f"{original}-{counter}"
+                counter += 1
+            data["expense_types"].append(expense_type)
+            known_type_names.add(name.lower())
+        if not expense.get("expense_type_id") and name:
+            match = next((t for t in data["expense_types"] if str(t.get("name", "")).strip().lower() == name.lower()), None)
+            if match:
+                expense["expense_type_id"] = match["id"]
+    for expense_type in data["expense_types"]:
+        expense_type.setdefault("active", True)
+        expense_type.setdefault("flexible", True)
+        expense_type.setdefault("created_at", now_iso())
+        expense_type.setdefault("updated_at", now_iso())
     for template in data["recurring"]:
         template.setdefault("active", True)
         template.setdefault("kind", "debit")
@@ -131,7 +161,7 @@ def load_db():
                     "updated_at": now_iso(),
                 }
             )
-        save_db({"members": members, "expenses": expenses, "recurring": [], "movements": []})
+        save_db({"members": members, "expenses": expenses, "expense_types": [], "recurring": [], "movements": []})
     with DB_PATH.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
     data = normalize_db(data)
@@ -148,6 +178,10 @@ def save_db(data):
 
 def find_member(data, member_id):
     return next((m for m in data["members"] if m["id"] == member_id), None)
+
+
+def find_expense_type(data, expense_type_id):
+    return next((e for e in data["expense_types"] if e["id"] == expense_type_id), None)
 
 
 def require_admin():
@@ -240,6 +274,7 @@ def dashboard(data, month=None):
 
     return {
         "members": data["members"],
+        "expense_types": sorted(data["expense_types"], key=lambda e: e.get("name", "")),
         "expenses": sorted(expenses, key=lambda e: (e.get("date", ""), e.get("created_at", "")), reverse=True),
         "recurring": sorted(data["recurring"], key=lambda e: e.get("name", "")),
         "movements": sorted(movements, key=lambda e: (e.get("date", ""), e.get("created_at", "")), reverse=True),
@@ -343,11 +378,42 @@ def update_member(member_id):
     return jsonify(dashboard(data))
 
 
+@app.post("/api/expense-types")
+def create_expense_type():
+    data = load_db()
+    payload = request.get_json(force=True)
+    name = str(payload.get("name", "")).strip()
+    if not name:
+        return jsonify({"error": "Nome da despesa e obrigatorio."}), 400
+    if any(str(t.get("name", "")).strip().lower() == name.lower() for t in data["expense_types"]):
+        return jsonify(dashboard(data))
+    expense_type_id = slug(name)
+    existing_ids = {t["id"] for t in data["expense_types"]}
+    original = expense_type_id
+    counter = 2
+    while expense_type_id in existing_ids:
+        expense_type_id = f"{original}-{counter}"
+        counter += 1
+    data["expense_types"].append(
+        {
+            "id": expense_type_id,
+            "name": name,
+            "active": bool(payload.get("active", True)),
+            "flexible": bool(payload.get("flexible", True)),
+            "created_at": now_iso(),
+            "updated_at": now_iso(),
+        }
+    )
+    save_db(data)
+    return jsonify(dashboard(data, request.args.get("month")))
+
+
 @app.post("/api/expenses")
 def create_expense():
     data = load_db()
     payload = request.get_json(force=True)
-    name = str(payload.get("name", "")).strip()
+    expense_type = find_expense_type(data, payload.get("expense_type_id"))
+    name = str(payload.get("name", "")).strip() or (expense_type["name"] if expense_type else "")
     participants = [pid for pid in payload.get("participants", []) if find_member(data, pid)]
     if not name:
         return jsonify({"error": "Nome da despesa e obrigatorio."}), 400
@@ -364,6 +430,7 @@ def create_expense():
         "amount": as_float(money(payload.get("amount"))),
         "kind": "credit" if payload.get("kind") == "credit" else "debit",
         "date": payload.get("date") or date.today().isoformat(),
+        "expense_type_id": expense_type["id"] if expense_type else payload.get("expense_type_id"),
         "participants": participants,
         "notes": str(payload.get("notes", "")).strip(),
         "paid": bool(payload.get("paid", False)),
@@ -386,6 +453,11 @@ def update_expense(expense_id):
     for key in ["name", "date", "notes"]:
         if key in payload:
             expense[key] = str(payload[key]).strip()
+    if "expense_type_id" in payload:
+        expense_type = find_expense_type(data, payload.get("expense_type_id"))
+        expense["expense_type_id"] = expense_type["id"] if expense_type else None
+        if expense_type and not str(payload.get("name", "")).strip():
+            expense["name"] = expense_type["name"]
     if "kind" in payload:
         expense["kind"] = "credit" if payload.get("kind") == "credit" else "debit"
     if "amount" in payload:

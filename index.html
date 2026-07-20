@@ -275,12 +275,63 @@
 
     <nav class="tabs">
       <button class="tab-button active" data-tab="expenses">Despesas</button>
+      <button class="tab-button secondary" data-tab="launches">Lancamentos</button>
       <button class="tab-button secondary" data-tab="recurring">Recorrentes</button>
+      <button class="tab-button secondary" data-tab="summary">Resumo</button>
       <button class="tab-button secondary" data-tab="admin">Admin</button>
       <button class="tab-button secondary hidden" id="memberTabButton" data-tab="member">Socio</button>
     </nav>
 
     <section class="tab-panel active" id="tab-expenses">
+      <main class="layout">
+        <section class="panel">
+          <h2>Cadastro de despesas</h2>
+          <p class="muted">Cadastre despesas frequentes, mesmo sem valor ou data fixa.</p>
+          <div style="height:12px"></div>
+          <form class="actions" id="expenseTypeForm">
+            <input id="expenseTypeName" placeholder="Ex: Lourdes, motoboy, gas, material" autocomplete="off">
+            <button type="submit" class="ghost">Adicionar despesa</button>
+          </form>
+          <div class="mini-actions" id="expenseTypeButtons" style="margin-top:12px"></div>
+          <div style="height:18px"></div>
+          <h2>Buscar despesas</h2>
+          <div class="form-grid" style="margin-top:12px">
+            <label>Lupa <input id="expenseSearch" list="expenseTypeSuggestions" placeholder="Digite ou escolha uma despesa"></label>
+            <div class="two">
+              <label>Data inicial <input id="expenseStartDate" type="date"></label>
+              <label>Data final <input id="expenseEndDate" type="date"></label>
+            </div>
+            <label>Periodo
+              <select id="expensePeriodMode">
+                <option value="month">Mensal</option>
+                <option value="year">Anual</option>
+              </select>
+            </label>
+            <div class="actions">
+              <button type="button" id="expenseSearchBtn">Pesquisar</button>
+              <button type="button" class="secondary" id="expenseClearSearchBtn">Limpar</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="topbar">
+            <div>
+              <h2>Historico de despesas</h2>
+              <p class="muted">Despesas agrupadas por data de lancamento.</p>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="exportBtn" type="button">Exportar CSV</button>
+            </div>
+          </div>
+          <div class="search-results" id="expenseSummaryResults"></div>
+          <div style="height:14px"></div>
+          <div class="list" id="expenseList"></div>
+        </section>
+      </main>
+    </section>
+
+    <section class="tab-panel" id="tab-launches">
       <main class="workspace">
         <aside class="member-rail">
           <h2>Socios</h2>
@@ -292,6 +343,9 @@
           <h2 id="formTitle">Novo lancamento</h2>
           <form class="form-grid" id="expenseForm">
             <input type="hidden" id="editingId">
+            <label>Despesa cadastrada
+              <select id="expenseTypeSelect"></select>
+            </label>
             <label>Despesa <input id="expenseName" placeholder="Ex: Aluguel, Urgtec, Cafe" autocomplete="off" required></label>
             <label>Tipo
               <select id="expenseKind">
@@ -328,45 +382,36 @@
           <div class="mini-actions" id="membersAdmin" style="margin-top:12px"></div>
           </section>
 
-          <section class="panel">
+          <div class="hidden" aria-hidden="true">
+            <input id="groupSearch">
+            <select id="groupMode"><option value="expense">Por despesa</option><option value="member">Por socio</option></select>
+            <button id="groupSearchBtn" type="button"></button>
+            <button id="groupClearBtn" type="button"></button>
+            <div id="groupMemberSuggestions"></div>
+            <div id="groupResults"></div>
+          </div>
+        </div>
+      </main>
+    </section>
+
+    <section class="tab-panel" id="tab-summary">
+      <main class="layout">
+        <section class="panel">
           <div class="topbar">
             <div>
               <h2>Resumo do mes</h2>
               <p class="muted" id="summaryText">Carregando...</p>
             </div>
-            <div class="actions">
-              <label>Mes <input type="month" id="monthFilter"></label>
-              <button class="secondary" id="exportBtn" type="button">Exportar CSV</button>
-            </div>
+            <label>Mes <input type="month" id="monthFilter"></label>
           </div>
           <div class="cards" id="totals"></div>
-          <div class="search-panel">
-            <div class="topbar" style="margin-bottom:0">
-              <div>
-                <h2>Buscar agrupado</h2>
-                <p class="muted">Pesquise uma despesa, pessoa ou socio e veja o total do mes.</p>
-              </div>
-            </div>
-            <div class="search-controls">
-              <label class="search-member-box">Lupa
-                <input id="groupSearch" list="memberSuggestions" placeholder="Clique para escolher socio ou digite despesa">
-                <div class="suggestions" id="groupMemberSuggestions"></div>
-              </label>
-              <label>Tipo
-                <select id="groupMode">
-                  <option value="expense">Por despesa/pessoa</option>
-                  <option value="member">Por socio</option>
-                </select>
-              </label>
-              <button id="groupSearchBtn" type="button">Pesquisar</button>
-              <button id="groupClearBtn" class="secondary" type="button">Limpar</button>
-            </div>
-            <div class="search-results" id="groupResults"></div>
-          </div>
+        </section>
+        <section class="panel">
+          <h2>Fechamento por socio</h2>
+          <p class="muted">Use os botoes dos socios para abrir detalhes individuais.</p>
           <div style="height:14px"></div>
-            <div class="list" id="expenseList"></div>
-          </section>
-        </div>
+          <div class="chart" id="summaryCharts"></div>
+        </section>
       </main>
     </section>
 
@@ -438,7 +483,7 @@
               </label>
             </div>
             <div class="cards" id="adminCards"></div>
-            <div class="search-panel">
+            <div class="search-panel hidden" aria-hidden="true">
               <div>
                 <h2>Buscar agrupado no admin</h2>
                 <p class="muted">Cruze despesas, producao, creditos e debitos do mes.</p>
@@ -523,11 +568,13 @@
 
   <audio id="prosperityAudio" preload="none"></audio>
   <datalist id="memberSuggestions"></datalist>
+  <datalist id="expenseTypeSuggestions"></datalist>
   <div class="toast" id="toast"></div>
 
   <script>
     const state = {
       members: [],
+      expenseTypes: [],
       expenses: [],
       recurring: [],
       movements: [],
@@ -548,7 +595,11 @@
       memberStartDate: "",
       memberEndDate: "",
       memberKind: "all",
-      memberView: "summary"
+      memberView: "summary",
+      expenseQuery: "",
+      expenseStartDate: "",
+      expenseEndDate: "",
+      expensePeriodMode: "month"
     };
 
     const $ = (id) => document.getElementById(id);
@@ -557,6 +608,7 @@
     const escapeHtml = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
     const memberName = (id) => state.members.find((m) => m.id === id)?.name || "Socio";
     const memberById = (id) => state.members.find((m) => m.id === id);
+    const expenseTypeById = (id) => state.expenseTypes.find((item) => item.id === id);
     const norm = (text) => String(text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     const signedCurrency = (value) => {
       const number = Number(value || 0);
@@ -598,6 +650,7 @@
 
     function applyDashboard(data) {
       state.members = data.members || [];
+      state.expenseTypes = data.expense_types || [];
       state.expenses = data.expenses || [];
       state.recurring = data.recurring || [];
       state.movements = data.movements || [];
@@ -617,13 +670,16 @@
       $("memberMonthFilter").value = state.month;
       renderMemberButtons();
       renderMembersAdmin();
+      renderExpenseTypes();
       renderMemberRails();
       renderSearchSuggestions();
       renderTotals();
+      renderExpenseSummary();
       renderGroupedSearch();
       renderExpenses();
       renderRecurring();
       renderAdmin();
+      renderSummary();
       renderMemberPage();
       updateCalc();
       const debits = state.expenses.filter((e) => e.kind !== "credit").reduce((s, e) => s + e.amount, 0);
@@ -653,6 +709,18 @@
       $("membersAdmin").innerHTML = state.members.map((member) => `<span class="pill">${escapeHtml(member.name)}</span>`).join("");
     }
 
+    function renderExpenseTypes() {
+      const activeTypes = state.expenseTypes.filter((item) => item.active !== false);
+      $("expenseTypeButtons").innerHTML = activeTypes.map((item) => `
+        <button type="button" class="secondary" data-pick-expense-type="${item.id}">${escapeHtml(item.name)}</button>
+      `).join("");
+      $("expenseTypeSuggestions").innerHTML = activeTypes.map((item) => `<option value="${escapeHtml(item.name)}"></option>`).join("");
+      $("expenseTypeSelect").innerHTML = [
+        `<option value="">Digitar manualmente</option>`,
+        ...activeTypes.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`)
+      ].join("");
+    }
+
     function renderMemberNav(targetId) {
       const target = $(targetId);
       if (!target) return;
@@ -676,6 +744,61 @@
       `).join("");
       $("groupMemberSuggestions").innerHTML = buttons;
       $("adminGroupMemberSuggestions").innerHTML = buttons;
+    }
+
+    function expenseMatchesFilters(expense) {
+      const query = norm(state.expenseQuery);
+      const haystack = [expense.name, expense.notes].map(norm).join(" ");
+      if (query && !haystack.includes(query)) return false;
+      if (state.expenseStartDate && expense.date < state.expenseStartDate) return false;
+      if (state.expenseEndDate && expense.date > state.expenseEndDate) return false;
+      return true;
+    }
+
+    function expensePeriodKey(expense) {
+      return state.expensePeriodMode === "year" ? String(expense.date || "").slice(0, 4) : String(expense.date || "").slice(0, 7);
+    }
+
+    function renderExpenseSummary() {
+      if (!$("expenseSummaryResults")) return;
+      $("expenseSearch").value = state.expenseQuery;
+      $("expenseStartDate").value = state.expenseStartDate;
+      $("expenseEndDate").value = state.expenseEndDate;
+      $("expensePeriodMode").value = state.expensePeriodMode;
+      const expenses = state.expenses.filter((expense) => expense.kind !== "credit").filter(expenseMatchesFilters);
+      const groups = new Map();
+      expenses.forEach((expense) => {
+        const key = `${norm(expense.name)}-${expensePeriodKey(expense)}`;
+        if (!groups.has(key)) groups.set(key, { name: expense.name, period: expensePeriodKey(expense), count: 0, total: 0, dates: [] });
+        const group = groups.get(key);
+        group.count += 1;
+        group.total = Number((group.total + Number(expense.amount || 0)).toFixed(2));
+        group.dates.push(formatDate(expense.date));
+      });
+      const total = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+      if (!groups.size) {
+        $("expenseSummaryResults").innerHTML = `<article class="group-card"><p class="muted">Nenhuma despesa encontrada com os filtros atuais.</p></article>`;
+        return;
+      }
+      $("expenseSummaryResults").innerHTML = [
+        `<article class="group-card">
+          <div class="row">
+            <div><div class="title">Total filtrado</div><div class="muted">${expenses.length} lancamento(s)</div></div>
+            <span class="pill red">${signedCurrency(-Math.abs(total))}</span>
+          </div>
+        </article>`,
+        ...[...groups.values()].sort((a, b) => b.total - a.total).map((group) => `
+          <article class="group-card">
+            <div class="row">
+              <div>
+                <div class="title">${escapeHtml(group.name)}</div>
+                <div class="muted">${group.period} · ${group.count} lancamento(s) · ${[...new Set(group.dates)].join(", ")}</div>
+              </div>
+              <span class="pill red">${signedCurrency(-Math.abs(group.total))}</span>
+            </div>
+          </article>
+        `)
+      ].join("");
     }
 
     function openMemberPage(memberId, previousTab = "expenses") {
@@ -820,6 +943,27 @@
       ].join("");
     }
 
+    function renderSummary() {
+      if (!$("summaryCharts")) return;
+      const maxValue = Math.max(1, ...state.members.flatMap((member) => {
+        const b = state.adminBalances[member.id] || {};
+        return [b.production || 0, b.credit || 0, b.debit || 0, b.payment || 0, b.expenses || 0];
+      }));
+      $("summaryCharts").innerHTML = state.members.map((member) => {
+        const b = state.adminBalances[member.id] || {};
+        return `
+          <div class="card">
+            <h3>${escapeHtml(member.name)}</h3>
+            ${barLine("Producao", b.production || 0, maxValue, "production")}
+            ${barLine("Creditos", b.credit || 0, maxValue, "credit")}
+            ${barLine("Despesas", b.expenses || 0, maxValue, "debit")}
+            ${barLine("Pagamentos", b.payment || 0, maxValue, "payment")}
+            <div class="share"><span>Saldo final</span><span>${currency.format(b.balance || 0)}</span></div>
+          </div>
+        `;
+      }).join("");
+    }
+
     function emptyMemberTotals() {
       return Object.fromEntries(state.members.map((member) => [member.id, 0]));
     }
@@ -918,31 +1062,51 @@
     }
 
     function renderExpenses() {
-      if (!state.expenses.length) {
-        $("expenseList").innerHTML = `<div class="expense"><p class="muted">Nenhum lancamento neste mes.</p></div>`;
+      const filtered = state.expenses.filter((expense) => expense.kind !== "credit").filter(expenseMatchesFilters);
+      if (!filtered.length) {
+        $("expenseList").innerHTML = `<div class="expense"><p class="muted">Nenhuma despesa encontrada.</p></div>`;
         return;
       }
-      $("expenseList").innerHTML = state.expenses.map((expense) => {
-        const isCredit = expense.kind === "credit";
-        const shares = Object.entries(expense.shares || {}).map(([memberId, value]) => `
-          <div class="share"><span>${escapeHtml(memberName(memberId))}</span><span>${currency.format(value)}</span></div>
-        `).join("");
+      const byDate = new Map();
+      filtered.forEach((expense) => {
+        if (!byDate.has(expense.date)) byDate.set(expense.date, []);
+        byDate.get(expense.date).push(expense);
+      });
+      $("expenseList").innerHTML = [...byDate.entries()].sort((a, b) => String(b[0]).localeCompare(String(a[0]))).map(([date, expenses]) => {
+        const totalDate = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+        const lines = expenses.map((expense) => {
+          const shares = Object.entries(expense.shares || {}).map(([memberId, value]) => `
+            <div class="share"><span>${escapeHtml(memberName(memberId))}</span><span>${signedCurrency(-Math.abs(value))}</span></div>
+          `).join("");
+          return `
+            <div class="expense">
+              <div class="row">
+                <div>
+                  <div class="title">${escapeHtml(expense.name)}</div>
+                  <div class="muted">${expense.participant_count} participante(s)</div>
+                </div>
+                <span class="pill red">${signedCurrency(-Math.abs(expense.amount))}</span>
+              </div>
+              <div class="shares">${shares}</div>
+              ${expense.notes ? `<p class="muted">${escapeHtml(expense.notes)}</p>` : ""}
+              <div class="mini-actions">
+                <button class="secondary" type="button" data-edit="${expense.id}">Editar</button>
+                ${expense.recurring_template_id ? `<span class="pill">Recorrente</span>` : `<button class="ghost" type="button" data-recurring="${expense.id}">Tornar recorrente</button>`}
+                <button class="danger" type="button" data-delete="${expense.id}">Excluir</button>
+              </div>
+            </div>
+          `;
+        }).join("");
         return `
-          <article class="expense">
+          <article class="group-card">
             <div class="row">
               <div>
-                <div class="title">${escapeHtml(expense.name)}</div>
-                <div class="muted">${formatDate(expense.date)} · ${isCredit ? "Credito" : "Debito"} · ${expense.participant_count} participantes</div>
+                <div class="title">${formatDate(date)}</div>
+                <div class="muted">${expenses.length} despesa(s) lancada(s)</div>
               </div>
-              <span class="pill ${isCredit ? "green" : ""}">${currency.format(expense.amount)}</span>
+              <span class="pill red">${signedCurrency(-Math.abs(totalDate))}</span>
             </div>
-            <div class="shares">${shares}</div>
-            ${expense.notes ? `<p class="muted">${escapeHtml(expense.notes)}</p>` : ""}
-            <div class="mini-actions">
-              <button class="secondary" type="button" data-edit="${expense.id}">Editar</button>
-              ${expense.recurring_template_id ? `<span class="pill">Recorrente</span>` : `<button class="ghost" type="button" data-recurring="${expense.id}">Tornar recorrente</button>`}
-              <button class="danger" type="button" data-delete="${expense.id}">Excluir</button>
-            </div>
+            <div class="list">${lines}</div>
           </article>
         `;
       }).join("");
@@ -1245,6 +1409,7 @@
       $("formTitle").textContent = "Novo lancamento";
       $("saveBtn").textContent = "Salvar lancamento";
       $("expenseForm").reset();
+      $("expenseTypeSelect").value = "";
       $("expenseKind").value = "debit";
       $("expenseDate").value = today();
       state.selected = new Set(state.members.filter((m) => m.active).map((m) => m.id));
@@ -1258,6 +1423,7 @@
       $("formTitle").textContent = "Editar lancamento";
       $("saveBtn").textContent = "Atualizar lancamento";
       $("expenseName").value = expense.name;
+      $("expenseTypeSelect").value = expense.expense_type_id || "";
       $("expenseKind").value = expense.kind || "debit";
       $("expenseAmount").value = String(expense.amount.toFixed(2)).replace(".", ",");
       $("expenseDate").value = expense.date;
@@ -1332,6 +1498,7 @@
       const editingId = $("editingId").value;
       const payload = {
         name: $("expenseName").value,
+        expense_type_id: $("expenseTypeSelect").value,
         amount: $("expenseAmount").value,
         kind: $("expenseKind").value,
         date: $("expenseDate").value,
@@ -1357,6 +1524,60 @@
       state.selected.add(data.members[data.members.length - 1].id);
       updateCalc();
       showToast("Socio adicionado.");
+    });
+
+    $("expenseTypeForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const name = $("expenseTypeName").value.trim();
+      if (!name) return;
+      const data = await api("/api/expense-types", { method: "POST", body: JSON.stringify({ name, flexible: true }) });
+      $("expenseTypeName").value = "";
+      applyDashboard(data);
+      showToast("Despesa cadastrada.");
+    });
+
+    $("expenseTypeButtons").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-pick-expense-type]");
+      if (!button) return;
+      const item = expenseTypeById(button.dataset.pickExpenseType);
+      if (!item) return;
+      $("expenseTypeSelect").value = item.id;
+      $("expenseName").value = item.name;
+      switchTab("launches");
+      $("expenseAmount").focus();
+    });
+
+    $("expenseTypeSelect").addEventListener("change", () => {
+      const item = expenseTypeById($("expenseTypeSelect").value);
+      if (item) $("expenseName").value = item.name;
+    });
+
+    function applyExpenseSearch() {
+      state.expenseQuery = $("expenseSearch").value.trim();
+      state.expenseStartDate = $("expenseStartDate").value;
+      state.expenseEndDate = $("expenseEndDate").value;
+      state.expensePeriodMode = $("expensePeriodMode").value;
+      renderExpenseSummary();
+      renderExpenses();
+    }
+
+    $("expenseSearchBtn").addEventListener("click", applyExpenseSearch);
+    $("expenseSearch").addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      applyExpenseSearch();
+    });
+    $("expenseSearch").addEventListener("change", applyExpenseSearch);
+    $("expenseStartDate").addEventListener("change", applyExpenseSearch);
+    $("expenseEndDate").addEventListener("change", applyExpenseSearch);
+    $("expensePeriodMode").addEventListener("change", applyExpenseSearch);
+    $("expenseClearSearchBtn").addEventListener("click", () => {
+      state.expenseQuery = "";
+      state.expenseStartDate = "";
+      state.expenseEndDate = "";
+      state.expensePeriodMode = "month";
+      renderExpenseSummary();
+      renderExpenses();
     });
 
     $("expenseList").addEventListener("click", (event) => {
