@@ -1,4 +1,4 @@
-const CACHE = "atelier-inove-financeiro-v6";
+const CACHE = "atelier-inove-financeiro-v7";
 const ASSETS = [
   "/",
   "/manifest.json",

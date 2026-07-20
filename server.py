@@ -207,7 +207,7 @@ def dashboard(data, month=None):
             expense_totals[member_id] = round(expense_totals.get(member_id, 0) + value, 2)
 
     movement_totals = {
-        m["id"]: {"production": 0, "credit": 0, "debit": 0, "net": 0}
+        m["id"]: {"production": 0, "credit": 0, "debit": 0, "payment": 0, "net": 0}
         for m in data["members"]
     }
     for movement in movements:
@@ -231,6 +231,10 @@ def dashboard(data, month=None):
             "production": movement_totals[member_id]["production"],
             "credit": movement_totals[member_id]["credit"],
             "debit": movement_totals[member_id]["debit"],
+            "payment": movement_totals[member_id]["payment"],
+            "production_net": round(
+                movement_totals[member_id]["production"] - movement_totals[member_id]["payment"], 2
+            ),
             "balance": round(movements_net - expenses_due, 2),
         }
 
@@ -480,7 +484,7 @@ def create_movement():
     if not find_member(data, member_id):
         return jsonify({"error": "Socio nao encontrado."}), 404
     kind = payload.get("kind")
-    if kind not in ("production", "credit", "debit"):
+    if kind not in ("production", "credit", "debit", "payment"):
         return jsonify({"error": "Tipo invalido."}), 400
     movement = {
         "id": uuid.uuid4().hex,

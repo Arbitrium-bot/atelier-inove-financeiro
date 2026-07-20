@@ -139,7 +139,7 @@
     .member-heading .actions { align-items: center; }
     .detail-item { border-left: 4px solid var(--gold); }
     .detail-item.credit, .detail-item.production { border-left-color: var(--ok); }
-    .detail-item.debit { border-left-color: var(--danger); }
+    .detail-item.debit, .detail-item.expense, .detail-item.payment { border-left-color: var(--danger); }
     .search-member-box { display: grid; gap: 8px; }
 
     .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
@@ -210,6 +210,7 @@
     .bar.production { background: var(--ok); }
     .bar.credit { background: var(--blue); }
     .bar.debit { background: var(--danger); }
+    .bar.payment { background: var(--danger); }
 
     .admin-lock { max-width: 460px; }
     .hidden { display: none !important; }
@@ -415,6 +416,7 @@
                     <option value="production">Producao</option>
                     <option value="credit">Credito</option>
                     <option value="debit">Debito</option>
+                    <option value="payment">Pagamento</option>
                   </select>
                 </label>
                 <label>Valor <input id="movementAmount" inputmode="decimal" placeholder="1000,00" required></label>
@@ -463,6 +465,9 @@
             <div style="height:14px"></div>
             <h2>Movimentos</h2>
               <div class="list" id="movementList"></div>
+            <div style="height:14px"></div>
+            <h2>Pagamentos</h2>
+              <div class="list" id="paymentList"></div>
             </section>
           </div>
         </div>
@@ -501,6 +506,7 @@
                   <option value="production">Producao</option>
                   <option value="credit">Creditos</option>
                   <option value="debit">Debitos</option>
+                  <option value="payment">Pagamentos</option>
                 </select>
               </label>
             </div>
@@ -552,6 +558,11 @@
     const memberName = (id) => state.members.find((m) => m.id === id)?.name || "Socio";
     const memberById = (id) => state.members.find((m) => m.id === id);
     const norm = (text) => String(text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const signedCurrency = (value) => {
+      const number = Number(value || 0);
+      const formatted = currency.format(Math.abs(number));
+      return number < 0 ? `-${formatted}` : formatted;
+    };
 
     function parseMoney(value) {
       const number = Number.parseFloat(String(value || "0").replace(/\./g, "").replace(",", "."));
@@ -700,7 +711,7 @@
           date: expense.date,
           title: expense.name,
           description: expense.notes || `${expense.participant_count} participante(s)`,
-          amount: Number(expense.shares[memberId] || 0),
+          amount: expense.kind === "credit" ? Math.abs(Number(expense.shares[memberId] || 0)) : -Math.abs(Number(expense.shares[memberId] || 0)),
           total: Number(expense.signed_amount ?? expense.amount ?? 0),
           participants: (expense.participants || []).map(memberName).join(", ")
         })),
@@ -740,7 +751,7 @@
               <div class="title">${escapeHtml(group.label)}</div>
               <div class="muted">${group.count} lancamento(s)</div>
             </div>
-            <span class="pill ${group.total >= 0 ? "green" : "red"}">${currency.format(group.total)}</span>
+            <span class="pill ${group.total >= 0 ? "green" : "red"}">${signedCurrency(group.total)}</span>
           </div>
         </article>
       `).join("");
@@ -755,7 +766,7 @@
               <div class="title">${escapeHtml(entry.title)}</div>
               <div class="muted">${formatDate(entry.date)} · ${escapeHtml(entry.description)}</div>
             </div>
-            <span class="pill ${entry.amount >= 0 ? "green" : "red"}">${currency.format(entry.amount)}</span>
+            <span class="pill ${entry.amount >= 0 ? "green" : "red"}">${signedCurrency(entry.amount)}</span>
           </div>
           ${entry.source === "expense" ? `<p class="muted">Participantes: ${escapeHtml(entry.participants || "Sem participantes")}</p>` : ""}
         </article>
@@ -786,10 +797,11 @@
       $("memberDetailBtn").classList.toggle("active", state.memberView === "detail");
       $("memberDetailBtn").classList.toggle("secondary", state.memberView !== "detail");
       $("memberCards").innerHTML = `
-        <div class="card warn"><span class="muted">Despesas rateadas</span><strong>${currency.format(expenseTotal)}</strong></div>
+        <div class="card warn"><span class="muted">Despesas rateadas</span><strong>${signedCurrency(-Math.abs(expenseTotal))}</strong></div>
         <div class="card ok"><span class="muted">Producao</span><strong>${currency.format(balance.production || 0)}</strong></div>
         <div class="card ok"><span class="muted">Creditos</span><strong>${currency.format(balance.credit || 0)}</strong></div>
-        <div class="card warn"><span class="muted">Debitos</span><strong>${currency.format(balance.debit || 0)}</strong></div>
+        <div class="card warn"><span class="muted">Debitos</span><strong>${signedCurrency(-Math.abs(balance.debit || 0))}</strong></div>
+        <div class="card warn"><span class="muted">Pagamentos</span><strong>${signedCurrency(-Math.abs(balance.payment || 0))}</strong></div>
         <div class="card ${(balance.balance || 0) >= 0 ? "ok" : "warn"}"><span class="muted">Saldo final</span><strong>${currency.format(balance.balance || 0)}</strong></div>
       `;
       $("memberResults").innerHTML = state.memberView === "summary" ? renderMemberSummary(entries) : renderMemberDetails(entries);
@@ -973,19 +985,22 @@
       $("adminCards").innerHTML = `
         <div class="card ok"><span class="muted">Producao</span><strong>${currency.format(balance.production || 0)}</strong></div>
         <div class="card ok"><span class="muted">Creditos</span><strong>${currency.format(balance.credit || 0)}</strong></div>
-        <div class="card warn"><span class="muted">Debitos manuais</span><strong>${currency.format(balance.debit || 0)}</strong></div>
-        <div class="card warn"><span class="muted">Despesas rateadas</span><strong>${currency.format(balance.expenses || 0)}</strong></div>
+        <div class="card warn"><span class="muted">Debitos manuais</span><strong>${signedCurrency(-Math.abs(balance.debit || 0))}</strong></div>
+        <div class="card warn"><span class="muted">Pagamentos</span><strong>${signedCurrency(-Math.abs(balance.payment || 0))}</strong></div>
+        <div class="card warn"><span class="muted">Despesas rateadas</span><strong>${signedCurrency(-Math.abs(balance.expenses || 0))}</strong></div>
+        <div class="card ${(balance.production_net || 0) >= 0 ? "ok" : "warn"}"><span class="muted">Producao apos pagamentos</span><strong>${currency.format(balance.production_net || 0)}</strong></div>
         <div class="card ${(balance.balance || 0) >= 0 ? "ok" : "warn"}"><span class="muted">Saldo final</span><strong>${currency.format(balance.balance || 0)}</strong></div>
       `;
       renderCharts();
       renderMovements();
+      renderPayments();
       renderAdminGroupedSearch();
     }
 
     function renderCharts() {
       const maxValue = Math.max(1, ...state.members.flatMap((member) => {
         const b = state.adminBalances[member.id] || {};
-        return [b.production || 0, b.credit || 0, b.debit || 0, b.expenses || 0];
+        return [b.production || 0, b.credit || 0, b.debit || 0, b.payment || 0, b.expenses || 0];
       }));
       $("adminCharts").innerHTML = state.members.map((member) => {
         const b = state.adminBalances[member.id] || {};
@@ -995,6 +1010,7 @@
             ${barLine("Producao", b.production || 0, maxValue, "production")}
             ${barLine("Creditos", b.credit || 0, maxValue, "credit")}
             ${barLine("Debitos", (b.debit || 0) + (b.expenses || 0), maxValue, "debit")}
+            ${barLine("Pagamentos", b.payment || 0, maxValue, "payment")}
           </div>
         `;
       }).join("");
@@ -1012,13 +1028,14 @@
     }
 
     function renderMovements() {
-      const list = state.movements.filter((movement) => !state.adminMember || movement.member_id === state.adminMember);
+      const list = state.movements.filter((movement) => movement.kind !== "payment" && (!state.adminMember || movement.member_id === state.adminMember));
       if (!list.length) {
         $("movementList").innerHTML = `<div class="movement"><p class="muted">Nenhum lancamento admin para este socio no mes.</p></div>`;
         return;
       }
       $("movementList").innerHTML = list.map((movement) => {
-        const label = movement.kind === "production" ? "Producao" : movement.kind === "credit" ? "Credito" : "Debito";
+        const label = movementKindLabel(movement.kind);
+        const signed = Number(movement.signed_amount ?? movement.amount ?? 0);
         return `
           <article class="movement">
             <div class="row">
@@ -1026,7 +1043,7 @@
                 <div class="title">${label}</div>
                 <div class="muted">${formatDate(movement.date)} · ${escapeHtml(movement.description || "Sem descricao")}</div>
               </div>
-              <span class="pill ${movement.kind === "debit" ? "red" : "green"}">${currency.format(movement.amount)}</span>
+              <span class="pill ${signed < 0 ? "red" : "green"}">${signedCurrency(signed)}</span>
             </div>
             <div class="mini-actions"><button class="danger" type="button" data-delete-movement="${movement.id}">Excluir</button></div>
           </article>
@@ -1034,8 +1051,29 @@
       }).join("");
     }
 
+    function renderPayments() {
+      const list = state.movements.filter((movement) => movement.kind === "payment" && (!state.adminMember || movement.member_id === state.adminMember));
+      if (!$("paymentList")) return;
+      if (!list.length) {
+        $("paymentList").innerHTML = `<div class="movement"><p class="muted">Nenhum pagamento abatido para este socio no mes.</p></div>`;
+        return;
+      }
+      $("paymentList").innerHTML = list.map((movement) => `
+        <article class="movement">
+          <div class="row">
+            <div>
+              <div class="title">Pagamento</div>
+              <div class="muted">${formatDate(movement.date)} · ${escapeHtml(movement.description || "Abatimento da producao")}</div>
+            </div>
+            <span class="pill red">${signedCurrency(-Math.abs(movement.amount || 0))}</span>
+          </div>
+          <div class="mini-actions"><button class="danger" type="button" data-delete-movement="${movement.id}">Excluir</button></div>
+        </article>
+      `).join("");
+    }
+
     function movementKindLabel(kind) {
-      return kind === "production" ? "Producao" : kind === "credit" ? "Credito" : "Debito";
+      return kind === "production" ? "Producao" : kind === "credit" ? "Credito" : kind === "payment" ? "Pagamento" : "Debito";
     }
 
     function renderAdminGroupedSearch() {
@@ -1062,7 +1100,7 @@
             <div class="share"><span>${escapeHtml(expense.name)} · ${formatDate(expense.date)}</span><span>${currency.format(expense.shares[member.id] || 0)}</span></div>
           `).join("");
           const movementLines = memberMovements.map((movement) => `
-            <div class="share"><span>${movementKindLabel(movement.kind)} · ${escapeHtml(movement.description || "Sem descricao")}</span><span>${currency.format(movement.amount || 0)}</span></div>
+            <div class="share"><span>${movementKindLabel(movement.kind)} · ${escapeHtml(movement.description || "Sem descricao")}</span><span>${signedCurrency(movement.signed_amount ?? movement.amount ?? 0)}</span></div>
           `).join("");
           return `
             <article class="group-card">
@@ -1076,8 +1114,9 @@
               <div class="group-grid">
                 <div class="group-share"><span>Producao</span><strong>${currency.format(balance.production || 0)}</strong></div>
                 <div class="group-share"><span>Creditos</span><strong>${currency.format(balance.credit || 0)}</strong></div>
-                <div class="group-share"><span>Debitos manuais</span><strong>${currency.format(balance.debit || 0)}</strong></div>
-                <div class="group-share"><span>Despesas rateadas</span><strong>${currency.format(balance.expenses || 0)}</strong></div>
+                <div class="group-share"><span>Debitos manuais</span><strong>${signedCurrency(-Math.abs(balance.debit || 0))}</strong></div>
+                <div class="group-share"><span>Pagamentos</span><strong>${signedCurrency(-Math.abs(balance.payment || 0))}</strong></div>
+                <div class="group-share"><span>Despesas rateadas</span><strong>${signedCurrency(-Math.abs(balance.expenses || 0))}</strong></div>
               </div>
               <div class="shares">${expenseLines || `<p class="muted">Sem despesas rateadas para este socio.</p>`}</div>
               <div class="shares">${movementLines || `<p class="muted">Sem movimentos admin para este socio.</p>`}</div>
@@ -1135,7 +1174,7 @@
           <article class="group-card">
             <div class="row">
               <div><div class="title">${escapeHtml(group.name)}</div><div class="muted">${group.count} movimento(s) · ${movementKindLabel(group.kind)}</div></div>
-              <span class="pill ${group.kind === "debit" ? "red" : "green"}">${currency.format(group.total)}</span>
+              <span class="pill ${group.total < 0 ? "red" : "green"}">${signedCurrency(group.total)}</span>
             </div>
             <div class="group-grid">${renderShareGrid(group.members)}</div>
           </article>
@@ -1465,13 +1504,16 @@
       showToast("Lancamento admin salvo.");
     });
 
-    $("movementList").addEventListener("click", async (event) => {
+    async function handleMovementDelete(event) {
       const button = event.target.closest("[data-delete-movement]");
       if (!button) return;
       if (!confirm("Excluir lancamento admin?")) return;
       applyDashboard(await api(`/api/admin/movements/${button.dataset.deleteMovement}?month=${encodeURIComponent(state.month)}`, { method: "DELETE" }));
       showToast("Lancamento admin excluido.");
-    });
+    }
+
+    $("movementList").addEventListener("click", handleMovementDelete);
+    $("paymentList").addEventListener("click", handleMovementDelete);
 
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/service-worker.js").catch(() => {});
     $("expenseDate").value = today();
