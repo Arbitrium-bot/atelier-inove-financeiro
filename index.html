@@ -86,6 +86,7 @@
     .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 16px; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
+    .workspace { display: grid; grid-template-columns: 190px 1fr; gap: 16px; align-items: start; }
     .layout { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 18px; align-items: start; }
     .panel {
       background: var(--panel);
@@ -104,6 +105,42 @@
 
     .member-buttons, .person-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .member-toggle, .person-tab { background: #fffdf8; color: var(--text); border: 1px solid var(--line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .member-rail {
+      position: sticky;
+      top: 12px;
+      display: grid;
+      gap: 10px;
+      background: rgba(255,253,248,.9);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 14px 36px rgba(45,34,18,.08);
+    }
+    .member-rail h2 { font-size: 15px; }
+    .member-nav { display: grid; gap: 8px; }
+    .member-nav button {
+      width: 100%;
+      justify-content: flex-start;
+      text-align: left;
+      background: #fffdf8;
+      color: var(--text);
+      border: 1px solid var(--line);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .member-nav button.active { background: linear-gradient(180deg, #f4c86f, var(--gold)); color: #171006; }
+    .suggestions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .suggestions button { min-height: 34px; padding: 0 10px; font-size: 13px; }
+    .filter-grid { display: grid; grid-template-columns: 1.2fr repeat(2, .8fr) .8fr; gap: 10px; align-items: end; }
+    .mode-toggle { display: flex; gap: 8px; flex-wrap: wrap; }
+    .mode-toggle button { flex: 1; min-width: 120px; }
+    .member-heading { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+    .member-heading .actions { align-items: center; }
+    .detail-item { border-left: 4px solid var(--gold); }
+    .detail-item.credit, .detail-item.production { border-left-color: var(--ok); }
+    .detail-item.debit { border-left-color: var(--danger); }
+    .search-member-box { display: grid; gap: 8px; }
 
     .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
     .card { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
@@ -195,9 +232,14 @@
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
 
     @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; }
+      .member-rail { position: static; }
+      .member-nav { display: flex; overflow-x: auto; padding-bottom: 2px; }
+      .member-nav button { min-width: 138px; }
       .layout { grid-template-columns: 1fr; }
       .topbar { align-items: stretch; flex-direction: column; }
       .topbar label { max-width: none; }
+      .filter-grid { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 520px) {
       .two, .three { grid-template-columns: 1fr; }
@@ -208,6 +250,7 @@
       .bar-line { grid-template-columns: 78px 1fr; }
       .bar-line strong { grid-column: 2; }
       .search-controls { grid-template-columns: 1fr; }
+      .filter-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -233,11 +276,18 @@
       <button class="tab-button active" data-tab="expenses">Despesas</button>
       <button class="tab-button secondary" data-tab="recurring">Recorrentes</button>
       <button class="tab-button secondary" data-tab="admin">Admin</button>
+      <button class="tab-button secondary hidden" id="memberTabButton" data-tab="member">Socio</button>
     </nav>
 
     <section class="tab-panel active" id="tab-expenses">
-      <main class="layout">
-        <section class="panel">
+      <main class="workspace">
+        <aside class="member-rail">
+          <h2>Socios</h2>
+          <p class="muted">Abra o fechamento individual.</p>
+          <div class="member-nav" id="expenseMemberRail"></div>
+        </aside>
+        <div class="layout">
+          <section class="panel">
           <h2 id="formTitle">Novo lancamento</h2>
           <form class="form-grid" id="expenseForm">
             <input type="hidden" id="editingId">
@@ -275,9 +325,9 @@
             <button type="submit" class="ghost">Adicionar</button>
           </form>
           <div class="mini-actions" id="membersAdmin" style="margin-top:12px"></div>
-        </section>
+          </section>
 
-        <section class="panel">
+          <section class="panel">
           <div class="topbar">
             <div>
               <h2>Resumo do mes</h2>
@@ -297,7 +347,10 @@
               </div>
             </div>
             <div class="search-controls">
-              <label>Lupa <input id="groupSearch" placeholder="Ex: Lourdes, limpeza, Deimir"></label>
+              <label class="search-member-box">Lupa
+                <input id="groupSearch" list="memberSuggestions" placeholder="Clique para escolher socio ou digite despesa">
+                <div class="suggestions" id="groupMemberSuggestions"></div>
+              </label>
               <label>Tipo
                 <select id="groupMode">
                   <option value="expense">Por despesa/pessoa</option>
@@ -310,8 +363,9 @@
             <div class="search-results" id="groupResults"></div>
           </div>
           <div style="height:14px"></div>
-          <div class="list" id="expenseList"></div>
-        </section>
+            <div class="list" id="expenseList"></div>
+          </section>
+        </div>
       </main>
     </section>
 
@@ -344,8 +398,14 @@
       </div>
 
       <div id="adminPanel" class="hidden">
-        <div class="layout">
-          <section class="panel">
+        <div class="workspace">
+          <aside class="member-rail">
+            <h2>Socios</h2>
+            <p class="muted">Consulte o resumo completo.</p>
+            <div class="member-nav" id="adminMemberRail"></div>
+          </aside>
+          <div class="layout">
+            <section class="panel">
             <h2>Lancamento admin</h2>
             <form class="form-grid" id="movementForm">
               <label>Socio <div class="person-tabs" id="adminPersonButtons"></div></label>
@@ -363,9 +423,9 @@
               <label>Descricao <input id="movementDescription" placeholder="Ex: recebido, ajuste, material pago"></label>
               <button type="submit">Salvar no admin</button>
             </form>
-          </section>
+            </section>
 
-          <section class="panel">
+            <section class="panel">
             <div class="topbar">
               <div>
                 <h2>Controle por socio</h2>
@@ -382,7 +442,10 @@
                 <p class="muted">Cruze despesas, producao, creditos e debitos do mes.</p>
               </div>
               <div class="search-controls">
-                <label>Lupa <input id="adminGroupSearch" placeholder="Ex: Lourdes, Lucas, Deimir"></label>
+                <label class="search-member-box">Lupa
+                  <input id="adminGroupSearch" list="memberSuggestions" placeholder="Clique para escolher socio ou digite despesa">
+                  <div class="suggestions" id="adminGroupMemberSuggestions"></div>
+                </label>
                 <label>Tipo
                   <select id="adminGroupMode">
                     <option value="member">Por socio</option>
@@ -399,14 +462,61 @@
             <div class="chart" id="adminCharts"></div>
             <div style="height:14px"></div>
             <h2>Movimentos</h2>
-            <div class="list" id="movementList"></div>
-          </section>
+              <div class="list" id="movementList"></div>
+            </section>
+          </div>
         </div>
       </div>
+    </section>
+
+    <section class="tab-panel" id="tab-member">
+      <main class="workspace">
+        <aside class="member-rail">
+          <h2>Socios</h2>
+          <p class="muted">Troque de pessoa sem voltar.</p>
+          <div class="member-nav" id="memberPageRail"></div>
+        </aside>
+        <section class="panel">
+          <div class="member-heading">
+            <div>
+              <h2 id="memberPageTitle">Socio</h2>
+              <p class="muted" id="memberPageSubtitle">Despesas, creditos, debitos e producao do mes.</p>
+            </div>
+            <div class="actions">
+              <label>Mes <input type="month" id="memberMonthFilter"></label>
+              <button class="secondary" type="button" id="memberBackBtn">Voltar</button>
+            </div>
+          </div>
+          <div style="height:14px"></div>
+          <div class="cards" id="memberCards"></div>
+          <div class="search-panel">
+            <div class="filter-grid">
+              <label>Buscar despesa ou descricao <input id="memberSearch" placeholder="Ex: aluguel, recebido, material"></label>
+              <label>Data inicial <input id="memberStartDate" type="date"></label>
+              <label>Data final <input id="memberEndDate" type="date"></label>
+              <label>Tipo
+                <select id="memberKindFilter">
+                  <option value="all">Todos</option>
+                  <option value="expense">Despesas</option>
+                  <option value="production">Producao</option>
+                  <option value="credit">Creditos</option>
+                  <option value="debit">Debitos</option>
+                </select>
+              </label>
+            </div>
+            <div class="mode-toggle">
+              <button type="button" id="memberSummaryBtn">Sintetico</button>
+              <button type="button" class="secondary" id="memberDetailBtn">Detalhado</button>
+            </div>
+          </div>
+          <div class="search-results" id="memberResults"></div>
+        </section>
+      </main>
     </section>
   </div>
 
   <audio id="prosperityAudio" preload="none"></audio>
+  <datalist id="memberSuggestions"></datalist>
   <div class="toast" id="toast"></div>
 
   <script>
@@ -425,7 +535,14 @@
       groupQuery: "",
       groupMode: "expense",
       adminGroupQuery: "",
-      adminGroupMode: "member"
+      adminGroupMode: "member",
+      activeMember: "",
+      previousTab: "expenses",
+      memberQuery: "",
+      memberStartDate: "",
+      memberEndDate: "",
+      memberKind: "all",
+      memberView: "summary"
     };
 
     const $ = (id) => document.getElementById(id);
@@ -433,6 +550,7 @@
     const today = () => new Date().toISOString().slice(0, 10);
     const escapeHtml = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
     const memberName = (id) => state.members.find((m) => m.id === id)?.name || "Socio";
+    const memberById = (id) => state.members.find((m) => m.id === id);
     const norm = (text) => String(text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
     function parseMoney(value) {
@@ -477,19 +595,25 @@
       state.movementTotals = data.movement_totals || {};
       state.month = data.month || state.month;
       if (!state.adminMember && state.members[0]) state.adminMember = state.members[0].id;
+      if (!state.activeMember && state.members[0]) state.activeMember = state.members[0].id;
+      if (state.activeMember && !memberById(state.activeMember) && state.members[0]) state.activeMember = state.members[0].id;
       render();
     }
 
     function render() {
       $("monthFilter").value = state.month;
       $("generateMonth").value = nextMonth(state.month);
+      $("memberMonthFilter").value = state.month;
       renderMemberButtons();
       renderMembersAdmin();
+      renderMemberRails();
+      renderSearchSuggestions();
       renderTotals();
       renderGroupedSearch();
       renderExpenses();
       renderRecurring();
       renderAdmin();
+      renderMemberPage();
       updateCalc();
       const debits = state.expenses.filter((e) => e.kind !== "credit").reduce((s, e) => s + e.amount, 0);
       const credits = state.expenses.filter((e) => e.kind === "credit").reduce((s, e) => s + e.amount, 0);
@@ -516,6 +640,159 @@
 
     function renderMembersAdmin() {
       $("membersAdmin").innerHTML = state.members.map((member) => `<span class="pill">${escapeHtml(member.name)}</span>`).join("");
+    }
+
+    function renderMemberNav(targetId) {
+      const target = $(targetId);
+      if (!target) return;
+      target.innerHTML = state.members.map((member) => `
+        <button type="button" class="${state.activeMember === member.id ? "active" : ""}" data-open-member="${member.id}">
+          ${escapeHtml(member.name)}
+        </button>
+      `).join("");
+    }
+
+    function renderMemberRails() {
+      renderMemberNav("expenseMemberRail");
+      renderMemberNav("adminMemberRail");
+      renderMemberNav("memberPageRail");
+    }
+
+    function renderSearchSuggestions() {
+      $("memberSuggestions").innerHTML = state.members.map((member) => `<option value="${escapeHtml(member.name)}"></option>`).join("");
+      const buttons = state.members.map((member) => `
+        <button type="button" class="secondary" data-suggest-member="${member.id}">${escapeHtml(member.name)}</button>
+      `).join("");
+      $("groupMemberSuggestions").innerHTML = buttons;
+      $("adminGroupMemberSuggestions").innerHTML = buttons;
+    }
+
+    function openMemberPage(memberId, previousTab = "expenses") {
+      if (!memberById(memberId)) return;
+      state.activeMember = memberId;
+      state.adminMember = memberId;
+      state.previousTab = previousTab;
+      renderMemberPage();
+      renderMemberRails();
+      switchTab("member");
+    }
+
+    function memberExpenses(memberId) {
+      return state.expenses.filter((expense) => expense.shares && expense.shares[memberId] !== undefined);
+    }
+
+    function memberMovements(memberId) {
+      return state.movements.filter((movement) => movement.member_id === memberId);
+    }
+
+    function inDateRange(value) {
+      if (state.memberStartDate && value < state.memberStartDate) return false;
+      if (state.memberEndDate && value > state.memberEndDate) return false;
+      return true;
+    }
+
+    function memberEntries(memberId) {
+      const query = norm(state.memberQuery);
+      const entries = [
+        ...memberExpenses(memberId).map((expense) => ({
+          source: "expense",
+          kind: expense.kind === "credit" ? "credit" : "expense",
+          date: expense.date,
+          title: expense.name,
+          description: expense.notes || `${expense.participant_count} participante(s)`,
+          amount: Number(expense.shares[memberId] || 0),
+          total: Number(expense.signed_amount ?? expense.amount ?? 0),
+          participants: (expense.participants || []).map(memberName).join(", ")
+        })),
+        ...memberMovements(memberId).map((movement) => ({
+          source: "movement",
+          kind: movement.kind,
+          date: movement.date,
+          title: movementKindLabel(movement.kind),
+          description: movement.description || "Sem descricao",
+          amount: Number(movement.signed_amount ?? movement.amount ?? 0),
+          total: Number(movement.signed_amount ?? movement.amount ?? 0),
+          participants: memberName(movement.member_id)
+        }))
+      ];
+      return entries
+        .filter((entry) => inDateRange(entry.date))
+        .filter((entry) => state.memberKind === "all" || entry.kind === state.memberKind || (state.memberKind === "expense" && entry.source === "expense"))
+        .filter((entry) => !query || [entry.title, entry.description, entry.participants, entry.kind].map(norm).join(" ").includes(query))
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    }
+
+    function renderMemberSummary(entries) {
+      const grouped = new Map();
+      entries.forEach((entry) => {
+        const key = entry.source === "expense" ? `expense-${norm(entry.title)}` : `movement-${entry.kind}`;
+        const label = entry.source === "expense" ? entry.title : movementKindLabel(entry.kind);
+        if (!grouped.has(key)) grouped.set(key, { label, kind: entry.kind, count: 0, total: 0 });
+        const group = grouped.get(key);
+        group.count += 1;
+        group.total = Number((group.total + Number(entry.amount || 0)).toFixed(2));
+      });
+      if (!grouped.size) return `<article class="group-card"><p class="muted">Nada encontrado com os filtros atuais.</p></article>`;
+      return [...grouped.values()].sort((a, b) => Math.abs(b.total) - Math.abs(a.total)).map((group) => `
+        <article class="group-card">
+          <div class="row">
+            <div>
+              <div class="title">${escapeHtml(group.label)}</div>
+              <div class="muted">${group.count} lancamento(s)</div>
+            </div>
+            <span class="pill ${group.total >= 0 ? "green" : "red"}">${currency.format(group.total)}</span>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function renderMemberDetails(entries) {
+      if (!entries.length) return `<article class="group-card"><p class="muted">Nada encontrado com os filtros atuais.</p></article>`;
+      return entries.map((entry) => `
+        <article class="group-card detail-item ${entry.kind}">
+          <div class="row">
+            <div>
+              <div class="title">${escapeHtml(entry.title)}</div>
+              <div class="muted">${formatDate(entry.date)} · ${escapeHtml(entry.description)}</div>
+            </div>
+            <span class="pill ${entry.amount >= 0 ? "green" : "red"}">${currency.format(entry.amount)}</span>
+          </div>
+          ${entry.source === "expense" ? `<p class="muted">Participantes: ${escapeHtml(entry.participants || "Sem participantes")}</p>` : ""}
+        </article>
+      `).join("");
+    }
+
+    function renderMemberPage() {
+      if (!$("memberResults")) return;
+      const member = memberById(state.activeMember) || state.members[0];
+      if (!member) {
+        $("memberPageTitle").textContent = "Socio";
+        $("memberCards").innerHTML = "";
+        $("memberResults").innerHTML = `<article class="group-card"><p class="muted">Cadastre um socio para abrir a consulta individual.</p></article>`;
+        return;
+      }
+      state.activeMember = member.id;
+      const balance = state.adminBalances[member.id] || {};
+      const expenseTotal = Number(state.totals[member.id] || 0);
+      const entries = memberEntries(member.id);
+      $("memberPageTitle").textContent = member.name;
+      $("memberPageSubtitle").textContent = `Fechamento de ${state.month} com ${entries.length} lancamento(s) filtrado(s).`;
+      $("memberSearch").value = state.memberQuery;
+      $("memberStartDate").value = state.memberStartDate;
+      $("memberEndDate").value = state.memberEndDate;
+      $("memberKindFilter").value = state.memberKind;
+      $("memberSummaryBtn").classList.toggle("active", state.memberView === "summary");
+      $("memberSummaryBtn").classList.toggle("secondary", state.memberView !== "summary");
+      $("memberDetailBtn").classList.toggle("active", state.memberView === "detail");
+      $("memberDetailBtn").classList.toggle("secondary", state.memberView !== "detail");
+      $("memberCards").innerHTML = `
+        <div class="card warn"><span class="muted">Despesas rateadas</span><strong>${currency.format(expenseTotal)}</strong></div>
+        <div class="card ok"><span class="muted">Producao</span><strong>${currency.format(balance.production || 0)}</strong></div>
+        <div class="card ok"><span class="muted">Creditos</span><strong>${currency.format(balance.credit || 0)}</strong></div>
+        <div class="card warn"><span class="muted">Debitos</span><strong>${currency.format(balance.debit || 0)}</strong></div>
+        <div class="card ${(balance.balance || 0) >= 0 ? "ok" : "warn"}"><span class="muted">Saldo final</span><strong>${currency.format(balance.balance || 0)}</strong></div>
+      `;
+      $("memberResults").innerHTML = state.memberView === "summary" ? renderMemberSummary(entries) : renderMemberDetails(entries);
     }
 
     function renderTotals() {
@@ -585,6 +862,7 @@
                 <span class="pill">${currency.format(totalSocio)}</span>
               </div>
               <div class="shares">${linhas || `<p class="muted">Sem lancamentos para este socio no mes.</p>`}</div>
+              <div class="mini-actions"><button type="button" class="secondary" data-open-member="${member.id}">Abrir pagina do socio</button></div>
             </article>
           `;
         }).join("");
@@ -803,6 +1081,7 @@
               </div>
               <div class="shares">${expenseLines || `<p class="muted">Sem despesas rateadas para este socio.</p>`}</div>
               <div class="shares">${movementLines || `<p class="muted">Sem movimentos admin para este socio.</p>`}</div>
+              <div class="mini-actions"><button type="button" class="secondary" data-open-member="${member.id}">Abrir pagina do socio</button></div>
             </article>
           `;
         }).join("");
@@ -962,6 +1241,7 @@
     }
 
     function switchTab(name) {
+      $("memberTabButton").classList.toggle("hidden", name !== "member");
       document.querySelectorAll(".tab-button").forEach((button) => {
         const active = button.dataset.tab === name;
         button.classList.toggle("active", active);
@@ -973,6 +1253,29 @@
     document.querySelector(".tabs").addEventListener("click", (event) => {
       const button = event.target.closest("[data-tab]");
       if (button) switchTab(button.dataset.tab);
+    });
+
+    document.addEventListener("click", (event) => {
+      const memberButton = event.target.closest("[data-open-member]");
+      if (memberButton) {
+        const activePanel = document.querySelector(".tab-panel.active");
+        const currentTab = activePanel?.id?.replace("tab-", "") || "expenses";
+        openMemberPage(memberButton.dataset.openMember, currentTab === "member" ? state.previousTab : currentTab);
+        return;
+      }
+      const suggestion = event.target.closest("[data-suggest-member]");
+      if (!suggestion) return;
+      const member = memberById(suggestion.dataset.suggestMember);
+      if (!member) return;
+      if (suggestion.closest("#adminGroupMemberSuggestions")) {
+        state.adminGroupQuery = member.name;
+        state.adminGroupMode = "member";
+        renderAdminGroupedSearch();
+      } else {
+        state.groupQuery = member.name;
+        state.groupMode = "member";
+        renderGroupedSearch();
+      }
     });
 
     $("memberButtons").addEventListener("click", (event) => {
@@ -1045,18 +1348,27 @@
 
     $("monthFilter").addEventListener("change", () => load($("monthFilter").value || new Date().toISOString().slice(0, 7)));
     $("exportBtn").addEventListener("click", () => { window.location.href = `/api/export.csv?month=${encodeURIComponent(state.month)}`; });
-    $("groupSearchBtn").addEventListener("click", () => {
+    function applyGroupedSearch() {
       state.groupQuery = $("groupSearch").value.trim();
       state.groupMode = $("groupMode").value;
+      if (state.members.some((member) => norm(member.name) === norm(state.groupQuery))) state.groupMode = "member";
       renderGroupedSearch();
-    });
+    }
+
+    function applyAdminGroupedSearch() {
+      state.adminGroupQuery = $("adminGroupSearch").value.trim();
+      state.adminGroupMode = $("adminGroupMode").value;
+      if (state.members.some((member) => norm(member.name) === norm(state.adminGroupQuery))) state.adminGroupMode = "member";
+      renderAdminGroupedSearch();
+    }
+
+    $("groupSearchBtn").addEventListener("click", applyGroupedSearch);
     $("groupSearch").addEventListener("keydown", (event) => {
       if (event.key !== "Enter") return;
       event.preventDefault();
-      state.groupQuery = $("groupSearch").value.trim();
-      state.groupMode = $("groupMode").value;
-      renderGroupedSearch();
+      applyGroupedSearch();
     });
+    $("groupSearch").addEventListener("change", applyGroupedSearch);
     $("groupMode").addEventListener("change", () => {
       state.groupMode = $("groupMode").value;
       renderGroupedSearch();
@@ -1066,18 +1378,13 @@
       $("groupSearch").value = "";
       renderGroupedSearch();
     });
-    $("adminGroupSearchBtn").addEventListener("click", () => {
-      state.adminGroupQuery = $("adminGroupSearch").value.trim();
-      state.adminGroupMode = $("adminGroupMode").value;
-      renderAdminGroupedSearch();
-    });
+    $("adminGroupSearchBtn").addEventListener("click", applyAdminGroupedSearch);
     $("adminGroupSearch").addEventListener("keydown", (event) => {
       if (event.key !== "Enter") return;
       event.preventDefault();
-      state.adminGroupQuery = $("adminGroupSearch").value.trim();
-      state.adminGroupMode = $("adminGroupMode").value;
-      renderAdminGroupedSearch();
+      applyAdminGroupedSearch();
     });
+    $("adminGroupSearch").addEventListener("change", applyAdminGroupedSearch);
     $("adminGroupMode").addEventListener("change", () => {
       state.adminGroupMode = $("adminGroupMode").value;
       renderAdminGroupedSearch();
@@ -1086,6 +1393,33 @@
       state.adminGroupQuery = "";
       $("adminGroupSearch").value = "";
       renderAdminGroupedSearch();
+    });
+
+    $("memberMonthFilter").addEventListener("change", () => load($("memberMonthFilter").value || new Date().toISOString().slice(0, 7)));
+    $("memberBackBtn").addEventListener("click", () => switchTab(state.previousTab || "expenses"));
+    $("memberSearch").addEventListener("input", () => {
+      state.memberQuery = $("memberSearch").value.trim();
+      renderMemberPage();
+    });
+    $("memberStartDate").addEventListener("change", () => {
+      state.memberStartDate = $("memberStartDate").value;
+      renderMemberPage();
+    });
+    $("memberEndDate").addEventListener("change", () => {
+      state.memberEndDate = $("memberEndDate").value;
+      renderMemberPage();
+    });
+    $("memberKindFilter").addEventListener("change", () => {
+      state.memberKind = $("memberKindFilter").value;
+      renderMemberPage();
+    });
+    $("memberSummaryBtn").addEventListener("click", () => {
+      state.memberView = "summary";
+      renderMemberPage();
+    });
+    $("memberDetailBtn").addEventListener("click", () => {
+      state.memberView = "detail";
+      renderMemberPage();
     });
 
     $("adminPinForm").addEventListener("submit", async (event) => {
@@ -1101,11 +1435,15 @@
       const button = event.target.closest("[data-admin-member]");
       if (!button) return;
       state.adminMember = button.dataset.adminMember;
+      state.activeMember = state.adminMember;
       renderAdmin();
+      renderMemberRails();
     });
     $("adminMemberFilter").addEventListener("change", () => {
       state.adminMember = $("adminMemberFilter").value;
+      state.activeMember = state.adminMember;
       renderAdmin();
+      renderMemberRails();
     });
 
     $("movementForm").addEventListener("submit", async (event) => {
