@@ -179,6 +179,33 @@
     .share span:last-child { color: var(--gold-dark); font-weight: 850; }
     .mini-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .mini-actions button { min-height: 34px; padding: 0 10px; font-size: 13px; }
+    .expense-type-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      max-height: 238px;
+      overflow-y: auto;
+      padding: 8px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      scrollbar-width: thin;
+    }
+    .expense-type-list button {
+      width: 100%;
+      min-height: 38px;
+      justify-content: flex-start;
+      text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      background: #fff;
+    }
+    .section-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+    .section-head label { min-width: 180px; }
+    .summary-kpis { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 10px; }
+    .summary-layout { display: grid; grid-template-columns: 1fr 1.15fr; gap: 18px; align-items: start; }
+    .summary-member-card { display: grid; gap: 10px; }
+    .summary-member-card .share span:last-child { color: var(--text); }
     .search-panel {
       display: grid;
       gap: 12px;
@@ -241,6 +268,8 @@
       .topbar { align-items: stretch; flex-direction: column; }
       .topbar label { max-width: none; }
       .filter-grid { grid-template-columns: 1fr 1fr; }
+      .summary-layout { grid-template-columns: 1fr; }
+      .summary-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 520px) {
       .two, .three { grid-template-columns: 1fr; }
@@ -252,6 +281,7 @@
       .bar-line strong { grid-column: 2; }
       .search-controls { grid-template-columns: 1fr; }
       .filter-grid { grid-template-columns: 1fr; }
+      .summary-kpis { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -285,14 +315,14 @@
     <section class="tab-panel active" id="tab-expenses">
       <main class="layout">
         <section class="panel">
-          <h2>Cadastro de despesas</h2>
-          <p class="muted">Cadastre despesas frequentes, mesmo sem valor ou data fixa.</p>
+          <h2>Biblioteca de despesas</h2>
+          <p class="muted">Cadastre despesas frequentes uma vez e selecione na hora do lancamento.</p>
           <div style="height:12px"></div>
           <form class="actions" id="expenseTypeForm">
             <input id="expenseTypeName" placeholder="Ex: Lourdes, motoboy, gas, material" autocomplete="off">
             <button type="submit" class="ghost">Adicionar despesa</button>
           </form>
-          <div class="mini-actions" id="expenseTypeButtons" style="margin-top:12px"></div>
+          <div class="mini-actions expense-type-list" id="expenseTypeButtons" style="margin-top:12px"></div>
           <div style="height:18px"></div>
           <h2>Buscar despesas</h2>
           <div class="form-grid" style="margin-top:12px">
@@ -318,9 +348,10 @@
           <div class="topbar">
             <div>
               <h2>Historico de despesas</h2>
-              <p class="muted">Despesas agrupadas por data de lancamento.</p>
+              <p class="muted">Mes exibido, busca e totais agrupados por data de lancamento.</p>
             </div>
             <div class="actions">
+              <label>Mes <input type="month" id="expenseMonthFilter"></label>
               <button class="secondary" id="exportBtn" type="button">Exportar CSV</button>
             </div>
           </div>
@@ -395,20 +426,20 @@
     </section>
 
     <section class="tab-panel" id="tab-summary">
-      <main class="layout">
+      <main class="summary-layout">
         <section class="panel">
           <div class="topbar">
             <div>
-              <h2>Resumo do mes</h2>
+              <h2>Resumo financeiro</h2>
               <p class="muted" id="summaryText">Carregando...</p>
             </div>
             <label>Mes <input type="month" id="monthFilter"></label>
           </div>
-          <div class="cards" id="totals"></div>
+          <div class="summary-kpis" id="totals"></div>
         </section>
         <section class="panel">
           <h2>Fechamento por socio</h2>
-          <p class="muted">Use os botoes dos socios para abrir detalhes individuais.</p>
+          <p class="muted">Valores consolidados do mes, com producao, ajustes, pagamentos e despesas.</p>
           <div style="height:14px"></div>
           <div class="chart" id="summaryCharts"></div>
         </section>
@@ -666,6 +697,7 @@
 
     function render() {
       $("monthFilter").value = state.month;
+      $("expenseMonthFilter").value = state.month;
       $("generateMonth").value = nextMonth(state.month);
       $("memberMonthFilter").value = state.month;
       renderMemberButtons();
@@ -684,7 +716,7 @@
       updateCalc();
       const debits = state.expenses.filter((e) => e.kind !== "credit").reduce((s, e) => s + e.amount, 0);
       const credits = state.expenses.filter((e) => e.kind === "credit").reduce((s, e) => s + e.amount, 0);
-      $("summaryText").textContent = `${state.expenses.length} lancamentos · debitos ${currency.format(debits)} · creditos ${currency.format(credits)} · saldo ${currency.format(debits - credits)}`;
+      $("summaryText").textContent = `${formatMonth(state.month)} · ${state.expenses.length} despesa(s) · debitos ${currency.format(debits)} · creditos ${currency.format(credits)}`;
     }
 
     function nextMonth(month) {
@@ -697,6 +729,12 @@
       if (!value) return "";
       const [year, month, day] = value.split("-");
       return `${day}/${month}/${year}`;
+    }
+
+    function formatMonth(value) {
+      if (!value) return "";
+      const [year, month] = value.split("-");
+      return `${month}/${year}`;
     }
 
     function renderMemberButtons() {
@@ -777,7 +815,7 @@
       });
       const total = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
       if (!groups.size) {
-        $("expenseSummaryResults").innerHTML = `<article class="group-card"><p class="muted">Nenhuma despesa encontrada com os filtros atuais.</p></article>`;
+        $("expenseSummaryResults").innerHTML = `<article class="group-card"><p class="muted">Nenhuma despesa encontrada em ${formatMonth(state.month)} com os filtros atuais.</p></article>`;
         return;
       }
       $("expenseSummaryResults").innerHTML = [
@@ -792,7 +830,7 @@
             <div class="row">
               <div>
                 <div class="title">${escapeHtml(group.name)}</div>
-                <div class="muted">${group.period} · ${group.count} lancamento(s) · ${[...new Set(group.dates)].join(", ")}</div>
+                <div class="muted">${state.expensePeriodMode === "year" ? group.period : formatMonth(group.period)} · ${group.count} lancamento(s) · ${[...new Set(group.dates)].join(", ")}</div>
               </div>
               <span class="pill red">${signedCurrency(-Math.abs(group.total))}</span>
             </div>
@@ -931,15 +969,18 @@
     }
 
     function renderTotals() {
-      const net = state.expenses.reduce((sum, item) => sum + (item.signed_amount ?? item.amount), 0);
+      const totalProduction = state.members.reduce((sum, member) => sum + Number(state.adminBalances[member.id]?.production || 0), 0);
+      const totalCredit = state.members.reduce((sum, member) => sum + Number(state.adminBalances[member.id]?.credit || 0), 0);
+      const totalDebit = state.members.reduce((sum, member) => sum + Number(state.adminBalances[member.id]?.debit || 0), 0);
+      const totalPayment = state.members.reduce((sum, member) => sum + Number(state.adminBalances[member.id]?.payment || 0), 0);
+      const totalExpenses = state.members.reduce((sum, member) => sum + Number(state.adminBalances[member.id]?.expenses || 0), 0);
+      const totalBalance = state.members.reduce((sum, member) => sum + Number(state.adminBalances[member.id]?.balance || 0), 0);
       $("totals").innerHTML = [
-        `<div class="card"><span class="muted">Saldo geral</span><strong>${currency.format(net)}</strong></div>`,
-        ...state.members.map((member) => `
-          <div class="card">
-            <span class="muted">${escapeHtml(member.name)}</span>
-            <strong>${currency.format(state.totals[member.id] || 0)}</strong>
-          </div>
-        `)
+        `<div class="card ok"><span class="muted">Producao</span><strong>${currency.format(totalProduction)}</strong></div>`,
+        `<div class="card ok"><span class="muted">Creditos</span><strong>${currency.format(totalCredit)}</strong></div>`,
+        `<div class="card warn"><span class="muted">Debitos e pagamentos</span><strong>${signedCurrency(-Math.abs(totalDebit + totalPayment))}</strong></div>`,
+        `<div class="card warn"><span class="muted">Despesas rateadas</span><strong>${signedCurrency(-Math.abs(totalExpenses))}</strong></div>`,
+        `<div class="card ${(totalBalance || 0) >= 0 ? "ok" : "warn"}"><span class="muted">Saldo final</span><strong>${currency.format(totalBalance)}</strong></div>`
       ].join("");
     }
 
@@ -952,13 +993,15 @@
       $("summaryCharts").innerHTML = state.members.map((member) => {
         const b = state.adminBalances[member.id] || {};
         return `
-          <div class="card">
+          <div class="card summary-member-card">
             <h3>${escapeHtml(member.name)}</h3>
             ${barLine("Producao", b.production || 0, maxValue, "production")}
             ${barLine("Creditos", b.credit || 0, maxValue, "credit")}
+            ${barLine("Debitos", b.debit || 0, maxValue, "debit")}
             ${barLine("Despesas", b.expenses || 0, maxValue, "debit")}
             ${barLine("Pagamentos", b.payment || 0, maxValue, "payment")}
             <div class="share"><span>Saldo final</span><span>${currency.format(b.balance || 0)}</span></div>
+            <div class="mini-actions"><button type="button" class="secondary" data-open-member="${member.id}">Abrir detalhes</button></div>
           </div>
         `;
       }).join("");
@@ -1607,6 +1650,7 @@
     });
 
     $("monthFilter").addEventListener("change", () => load($("monthFilter").value || new Date().toISOString().slice(0, 7)));
+    $("expenseMonthFilter").addEventListener("change", () => load($("expenseMonthFilter").value || new Date().toISOString().slice(0, 7)));
     $("exportBtn").addEventListener("click", () => { window.location.href = `/api/export.csv?month=${encodeURIComponent(state.month)}`; });
     function applyGroupedSearch() {
       state.groupQuery = $("groupSearch").value.trim();
@@ -1740,6 +1784,7 @@
     $("expenseDate").value = today();
     $("movementDate").value = today();
     $("monthFilter").value = state.month;
+    $("expenseMonthFilter").value = state.month;
     initProsperityPlayer();
     load().then(resetForm).catch((error) => showToast(error.message));
   </script>
