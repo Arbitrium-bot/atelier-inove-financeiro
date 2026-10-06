@@ -20,6 +20,14 @@ ADMIN_PIN = os.environ.get("ADMIN_PIN", "inove2026")
 app = Flask(__name__, static_folder=None)
 
 
+@app.after_request
+def prevent_stale_app_cache(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
 DEFAULT_MEMBERS = ["Lucas", "Debora", "Andre", "Daniel", "Helen"]
 DEFAULT_EXPENSES = [
     ("Aluguel", "3534.01", ["Lucas", "Debora", "Andre", "Helen"], "Exemplo vindo da divisao atual"),
@@ -95,6 +103,7 @@ def normalize_db(data):
     known_type_names = {str(t.get("name", "")).strip().lower() for t in data["expense_types"]}
     for expense in data["expenses"]:
         expense.setdefault("kind", expense.get("type") or "debit")
+        expense["category"] = "personal" if expense.get("category") == "personal" else "atelier"
         expense.setdefault("paid", False)
         expense.setdefault("recurring_template_id", None)
         expense.setdefault("expense_type_id", None)
@@ -130,6 +139,7 @@ def normalize_db(data):
     for template in data["recurring"]:
         template.setdefault("active", True)
         template.setdefault("kind", "debit")
+        template["category"] = "personal" if template.get("category") == "personal" else "atelier"
         template.setdefault("day", 1)
     for movement in data["movements"]:
         movement.setdefault("created_at", now_iso())
@@ -208,6 +218,7 @@ def expense_view(expense, members):
     return {
         **expense,
         "kind": kind,
+        "category": "personal" if expense.get("category") == "personal" else "atelier",
         "amount": as_float(total),
         "signed_amount": as_float(total * sign),
         "participant_count": count,
@@ -236,9 +247,15 @@ def dashboard(data, month=None):
     movements = [movement_view(m) for m in month_filter(data["movements"], month)]
 
     expense_totals = {m["id"]: 0 for m in data["members"]}
+    atelier_expense_totals = {m["id"]: 0 for m in data["members"]}
+    personal_expense_totals = {m["id"]: 0 for m in data["members"]}
     for expense in expenses:
         for member_id, value in expense["shares"].items():
             expense_totals[member_id] = round(expense_totals.get(member_id, 0) + value, 2)
+            if expense.get("category") == "personal":
+                personal_expense_totals[member_id] = round(personal_expense_totals.get(member_id, 0) + value, 2)
+            else:
+                atelier_expense_totals[member_id] = round(atelier_expense_totals.get(member_id, 0) + value, 2)
 
     movement_totals = {
         m["id"]: {"production": 0, "credit": 0, "debit": 0, "payment": 0, "net": 0}
@@ -262,6 +279,8 @@ def dashboard(data, month=None):
         movements_net = movement_totals[member_id]["net"]
         admin_balances[member_id] = {
             "expenses": round(expenses_due, 2),
+            "atelier_expenses": round(atelier_expense_totals.get(member_id, 0), 2),
+            "personal_expenses": round(personal_expense_totals.get(member_id, 0), 2),
             "production": movement_totals[member_id]["production"],
             "credit": movement_totals[member_id]["credit"],
             "debit": movement_totals[member_id]["debit"],
@@ -279,11 +298,15 @@ def dashboard(data, month=None):
         "recurring": sorted(data["recurring"], key=lambda e: e.get("name", "")),
         "movements": sorted(movements, key=lambda e: (e.get("date", ""), e.get("created_at", "")), reverse=True),
         "totals": expense_totals,
+        "atelier_totals": atelier_expense_totals,
+        "personal_totals": personal_expense_totals,
         "movement_totals": movement_totals,
         "admin_balances": admin_balances,
         "grand_total": round(sum(e.get("signed_amount", e["amount"]) for e in expenses), 2),
         "debit_total": round(sum(e["amount"] for e in expenses if e.get("kind") != "credit"), 2),
         "credit_total": round(sum(e["amount"] for e in expenses if e.get("kind") == "credit"), 2),
+        "atelier_debit_total": round(sum(e["amount"] for e in expenses if e.get("kind") != "credit" and e.get("category") != "personal"), 2),
+        "personal_debit_total": round(sum(e["amount"] for e in expenses if e.get("kind") != "credit" and e.get("category") == "personal"), 2),
         "month": month,
         "next_month": next_month(month),
     }
@@ -295,6 +318,7 @@ def template_from_payload(payload, participants):
         "name": str(payload.get("name", "")).strip(),
         "amount": as_float(money(payload.get("amount"))),
         "kind": "credit" if payload.get("kind") == "credit" else "debit",
+        "category": "personal" if payload.get("category") == "personal" else "atelier",
         "participants": participants,
         "notes": str(payload.get("notes", "")).strip(),
         "day": int(payload.get("day") or 1),
@@ -311,6 +335,7 @@ def expense_from_template(template, month):
         "name": template["name"],
         "amount": template["amount"],
         "kind": template.get("kind", "debit"),
+        "category": "personal" if template.get("category") == "personal" else "atelier",
         "date": f"{month}-{day:02d}",
         "participants": template.get("participants", []),
         "notes": template.get("notes", ""),
@@ -429,6 +454,7 @@ def create_expense():
         "name": name,
         "amount": as_float(money(payload.get("amount"))),
         "kind": "credit" if payload.get("kind") == "credit" else "debit",
+        "category": "personal" if payload.get("category") == "personal" else "atelier",
         "date": payload.get("date") or date.today().isoformat(),
         "expense_type_id": expense_type["id"] if expense_type else payload.get("expense_type_id"),
         "participants": participants,
@@ -460,6 +486,8 @@ def update_expense(expense_id):
             expense["name"] = expense_type["name"]
     if "kind" in payload:
         expense["kind"] = "credit" if payload.get("kind") == "credit" else "debit"
+    if "category" in payload:
+        expense["category"] = "personal" if payload.get("category") == "personal" else "atelier"
     if "amount" in payload:
         expense["amount"] = as_float(money(payload["amount"]))
     if "participants" in payload:

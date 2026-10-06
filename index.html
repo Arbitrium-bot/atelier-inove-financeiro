@@ -306,6 +306,7 @@
     <nav class="tabs">
       <button class="tab-button active" data-tab="expenses">Despesas</button>
       <button class="tab-button secondary" data-tab="launches">Lancamentos</button>
+      <button class="tab-button secondary" data-tab="personal">Pessoal</button>
       <button class="tab-button secondary" data-tab="recurring">Recorrentes</button>
       <button class="tab-button secondary" data-tab="summary">Resumo</button>
       <button class="tab-button secondary" data-tab="admin">Admin</button>
@@ -374,6 +375,7 @@
           <h2 id="formTitle">Novo lancamento</h2>
           <form class="form-grid" id="expenseForm">
             <input type="hidden" id="editingId">
+            <input type="hidden" id="expenseCategory" value="atelier">
             <label>Despesa cadastrada
               <select id="expenseTypeSelect"></select>
             </label>
@@ -422,6 +424,49 @@
             <div id="groupResults"></div>
           </div>
         </div>
+      </main>
+    </section>
+
+    <section class="tab-panel" id="tab-personal">
+      <main class="layout">
+        <section class="panel">
+          <h2>Lancar despesa pessoal</h2>
+          <p class="muted">Use esta aba para separar gastos pessoais dos gastos do atelier. Eles continuam abatendo no saldo final.</p>
+          <div style="height:14px"></div>
+          <form class="form-grid" id="personalExpenseForm">
+            <label>Despesa cadastrada
+              <select id="personalExpenseTypeSelect"></select>
+            </label>
+            <label>Despesa <input id="personalExpenseName" placeholder="Ex: Mercado, academia, cartao" autocomplete="off" required></label>
+            <div class="two">
+              <label>Valor <input id="personalExpenseAmount" inputmode="decimal" placeholder="250,00" required></label>
+              <label>Data <input id="personalExpenseDate" type="date" required></label>
+            </div>
+            <label>Quem paga <div class="member-buttons" id="personalMemberButtons"></div></label>
+            <div class="cards">
+              <div class="card"><span class="muted">Pessoas</span><strong id="personalCalcCount">0</strong></div>
+              <div class="card"><span class="muted">Valor por pessoa</span><strong id="personalCalcShare">R$ 0,00</strong></div>
+            </div>
+            <label>Observacoes <textarea id="personalExpenseNotes" placeholder="Opcional"></textarea></label>
+            <div class="actions">
+              <button type="submit">Salvar despesa pessoal</button>
+              <button type="button" class="secondary" id="personalClearBtn">Limpar</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="topbar">
+            <div>
+              <h2>Despesas pessoais</h2>
+              <p class="muted">Lancamentos separados do atelier, mas incluidos no fechamento.</p>
+            </div>
+            <label>Mes <input type="month" id="personalMonthFilter"></label>
+          </div>
+          <div class="search-results" id="personalSummaryResults"></div>
+          <div style="height:14px"></div>
+          <div class="list" id="personalExpenseList"></div>
+        </section>
       </main>
     </section>
 
@@ -610,9 +655,12 @@
       recurring: [],
       movements: [],
       totals: {},
+      atelierTotals: {},
+      personalTotals: {},
       adminBalances: {},
       movementTotals: {},
       selected: new Set(),
+      personalSelected: new Set(),
       month: new Date().toISOString().slice(0, 7),
       adminPin: localStorage.getItem("atelierAdminPin") || "",
       adminMember: "",
@@ -686,6 +734,8 @@
       state.recurring = data.recurring || [];
       state.movements = data.movements || [];
       state.totals = data.totals || {};
+      state.atelierTotals = data.atelier_totals || {};
+      state.personalTotals = data.personal_totals || {};
       state.adminBalances = data.admin_balances || {};
       state.movementTotals = data.movement_totals || {};
       state.month = data.month || state.month;
@@ -698,9 +748,11 @@
     function render() {
       $("monthFilter").value = state.month;
       $("expenseMonthFilter").value = state.month;
+      $("personalMonthFilter").value = state.month;
       $("generateMonth").value = nextMonth(state.month);
       $("memberMonthFilter").value = state.month;
       renderMemberButtons();
+      renderPersonalMemberButtons();
       renderMembersAdmin();
       renderExpenseTypes();
       renderMemberRails();
@@ -709,14 +761,18 @@
       renderExpenseSummary();
       renderGroupedSearch();
       renderExpenses();
+      renderPersonalExpenses();
       renderRecurring();
       renderAdmin();
       renderSummary();
       renderMemberPage();
       updateCalc();
+      updatePersonalCalc();
       const debits = state.expenses.filter((e) => e.kind !== "credit").reduce((s, e) => s + e.amount, 0);
       const credits = state.expenses.filter((e) => e.kind === "credit").reduce((s, e) => s + e.amount, 0);
-      $("summaryText").textContent = `${formatMonth(state.month)} · ${state.expenses.length} despesa(s) · debitos ${currency.format(debits)} · creditos ${currency.format(credits)}`;
+      const personalDebits = state.expenses.filter((e) => e.kind !== "credit" && e.category === "personal").reduce((s, e) => s + e.amount, 0);
+      const atelierDebits = state.expenses.filter((e) => e.kind !== "credit" && e.category !== "personal").reduce((s, e) => s + e.amount, 0);
+      $("summaryText").textContent = `${formatMonth(state.month)} · atelier ${currency.format(atelierDebits)} · pessoais ${currency.format(personalDebits)} · creditos ${currency.format(credits)} · total debitos ${currency.format(debits)}`;
     }
 
     function nextMonth(month) {
@@ -743,6 +799,12 @@
       `).join("");
     }
 
+    function renderPersonalMemberButtons() {
+      $("personalMemberButtons").innerHTML = state.members.filter((m) => m.active).map((member) => `
+        <button type="button" class="member-toggle ${state.personalSelected.has(member.id) ? "active" : ""}" data-personal-member="${member.id}">${escapeHtml(member.name)}</button>
+      `).join("");
+    }
+
     function renderMembersAdmin() {
       $("membersAdmin").innerHTML = state.members.map((member) => `<span class="pill">${escapeHtml(member.name)}</span>`).join("");
     }
@@ -754,6 +816,10 @@
       `).join("");
       $("expenseTypeSuggestions").innerHTML = activeTypes.map((item) => `<option value="${escapeHtml(item.name)}"></option>`).join("");
       $("expenseTypeSelect").innerHTML = [
+        `<option value="">Digitar manualmente</option>`,
+        ...activeTypes.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`)
+      ].join("");
+      $("personalExpenseTypeSelect").innerHTML = [
         `<option value="">Digitar manualmente</option>`,
         ...activeTypes.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`)
       ].join("");
@@ -803,7 +869,7 @@
       $("expenseStartDate").value = state.expenseStartDate;
       $("expenseEndDate").value = state.expenseEndDate;
       $("expensePeriodMode").value = state.expensePeriodMode;
-      const expenses = state.expenses.filter((expense) => expense.kind !== "credit").filter(expenseMatchesFilters);
+      const expenses = state.expenses.filter((expense) => expense.kind !== "credit" && expense.category !== "personal").filter(expenseMatchesFilters);
       const groups = new Map();
       expenses.forEach((expense) => {
         const key = `${norm(expense.name)}-${expensePeriodKey(expense)}`;
@@ -974,12 +1040,16 @@
       const totalDebit = state.members.reduce((sum, member) => sum + Number(state.adminBalances[member.id]?.debit || 0), 0);
       const totalPayment = state.members.reduce((sum, member) => sum + Number(state.adminBalances[member.id]?.payment || 0), 0);
       const totalExpenses = state.members.reduce((sum, member) => sum + Number(state.adminBalances[member.id]?.expenses || 0), 0);
+      const totalAtelierExpenses = state.members.reduce((sum, member) => sum + Number(state.adminBalances[member.id]?.atelier_expenses || 0), 0);
+      const totalPersonalExpenses = state.members.reduce((sum, member) => sum + Number(state.adminBalances[member.id]?.personal_expenses || 0), 0);
       const totalBalance = state.members.reduce((sum, member) => sum + Number(state.adminBalances[member.id]?.balance || 0), 0);
       $("totals").innerHTML = [
         `<div class="card ok"><span class="muted">Producao</span><strong>${currency.format(totalProduction)}</strong></div>`,
         `<div class="card ok"><span class="muted">Creditos</span><strong>${currency.format(totalCredit)}</strong></div>`,
         `<div class="card warn"><span class="muted">Debitos e pagamentos</span><strong>${signedCurrency(-Math.abs(totalDebit + totalPayment))}</strong></div>`,
-        `<div class="card warn"><span class="muted">Despesas rateadas</span><strong>${signedCurrency(-Math.abs(totalExpenses))}</strong></div>`,
+        `<div class="card warn"><span class="muted">Despesas atelier</span><strong>${signedCurrency(-Math.abs(totalAtelierExpenses))}</strong></div>`,
+        `<div class="card warn"><span class="muted">Despesas pessoais</span><strong>${signedCurrency(-Math.abs(totalPersonalExpenses))}</strong></div>`,
+        `<div class="card warn"><span class="muted">Total despesas</span><strong>${signedCurrency(-Math.abs(totalExpenses))}</strong></div>`,
         `<div class="card ${(totalBalance || 0) >= 0 ? "ok" : "warn"}"><span class="muted">Saldo final</span><strong>${currency.format(totalBalance)}</strong></div>`
       ].join("");
     }
@@ -1105,7 +1175,7 @@
     }
 
     function renderExpenses() {
-      const filtered = state.expenses.filter((expense) => expense.kind !== "credit").filter(expenseMatchesFilters);
+      const filtered = state.expenses.filter((expense) => expense.kind !== "credit" && expense.category !== "personal").filter(expenseMatchesFilters);
       if (!filtered.length) {
         $("expenseList").innerHTML = `<div class="expense"><p class="muted">Nenhuma despesa encontrada.</p></div>`;
         return;
@@ -1134,6 +1204,7 @@
               ${expense.notes ? `<p class="muted">${escapeHtml(expense.notes)}</p>` : ""}
               <div class="mini-actions">
                 <button class="secondary" type="button" data-edit="${expense.id}">Editar</button>
+                <button class="ghost" type="button" data-mark-personal="${expense.id}">Tornar pessoal</button>
                 ${expense.recurring_template_id ? `<span class="pill">Recorrente</span>` : `<button class="ghost" type="button" data-recurring="${expense.id}">Tornar recorrente</button>`}
                 <button class="danger" type="button" data-delete="${expense.id}">Excluir</button>
               </div>
@@ -1153,6 +1224,64 @@
           </article>
         `;
       }).join("");
+    }
+
+    function renderPersonalExpenses() {
+      const expenses = state.expenses.filter((expense) => expense.kind !== "credit" && expense.category === "personal");
+      const total = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+      $("personalSummaryResults").innerHTML = `
+        <article class="group-card">
+          <div class="row">
+            <div><div class="title">Total pessoal do mes</div><div class="muted">${expenses.length} lancamento(s) pessoal(is)</div></div>
+            <span class="pill red">${signedCurrency(-Math.abs(total))}</span>
+          </div>
+        </article>
+      `;
+      if (!expenses.length) {
+        $("personalExpenseList").innerHTML = `<div class="expense"><p class="muted">Nenhuma despesa pessoal neste mes.</p></div>`;
+        return;
+      }
+      const byDate = new Map();
+      expenses.forEach((expense) => {
+        if (!byDate.has(expense.date)) byDate.set(expense.date, []);
+        byDate.get(expense.date).push(expense);
+      });
+      $("personalExpenseList").innerHTML = [...byDate.entries()].sort((a, b) => String(b[0]).localeCompare(String(a[0]))).map(([date, items]) => `
+        <article class="group-card">
+          <div class="row">
+            <div>
+              <div class="title">${formatDate(date)}</div>
+              <div class="muted">${items.length} despesa(s) pessoal(is)</div>
+            </div>
+            <span class="pill red">${signedCurrency(-Math.abs(items.reduce((sum, expense) => sum + Number(expense.amount || 0), 0)))}</span>
+          </div>
+          <div class="list">
+            ${items.map((expense) => {
+              const shares = Object.entries(expense.shares || {}).map(([memberId, value]) => `
+                <div class="share"><span>${escapeHtml(memberName(memberId))}</span><span>${signedCurrency(-Math.abs(value))}</span></div>
+              `).join("");
+              return `
+                <div class="expense">
+                  <div class="row">
+                    <div>
+                      <div class="title">${escapeHtml(expense.name)}</div>
+                      <div class="muted">${expense.participant_count} pessoa(s)</div>
+                    </div>
+                    <span class="pill red">${signedCurrency(-Math.abs(expense.amount))}</span>
+                  </div>
+                  <div class="shares">${shares}</div>
+                  ${expense.notes ? `<p class="muted">${escapeHtml(expense.notes)}</p>` : ""}
+                  <div class="mini-actions">
+                    <button class="secondary" type="button" data-edit="${expense.id}">Editar</button>
+                    <button class="ghost" type="button" data-mark-atelier="${expense.id}">Voltar para atelier</button>
+                    <button class="danger" type="button" data-delete="${expense.id}">Excluir</button>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </article>
+      `).join("");
     }
 
     function renderRecurring() {
@@ -1194,7 +1323,9 @@
         <div class="card ok"><span class="muted">Creditos</span><strong>${currency.format(balance.credit || 0)}</strong></div>
         <div class="card warn"><span class="muted">Debitos manuais</span><strong>${signedCurrency(-Math.abs(balance.debit || 0))}</strong></div>
         <div class="card warn"><span class="muted">Pagamentos</span><strong>${signedCurrency(-Math.abs(balance.payment || 0))}</strong></div>
-        <div class="card warn"><span class="muted">Despesas rateadas</span><strong>${signedCurrency(-Math.abs(balance.expenses || 0))}</strong></div>
+        <div class="card warn"><span class="muted">Despesas atelier</span><strong>${signedCurrency(-Math.abs(balance.atelier_expenses || 0))}</strong></div>
+        <div class="card warn"><span class="muted">Despesas pessoais</span><strong>${signedCurrency(-Math.abs(balance.personal_expenses || 0))}</strong></div>
+        <div class="card warn"><span class="muted">Total despesas</span><strong>${signedCurrency(-Math.abs(balance.expenses || 0))}</strong></div>
         <div class="card ${(balance.production_net || 0) >= 0 ? "ok" : "warn"}"><span class="muted">Producao apos pagamentos</span><strong>${currency.format(balance.production_net || 0)}</strong></div>
         <div class="card ${(balance.balance || 0) >= 0 ? "ok" : "warn"}"><span class="muted">Saldo final</span><strong>${currency.format(balance.balance || 0)}</strong></div>
       `;
@@ -1447,16 +1578,33 @@
       renderMemberButtons();
     }
 
+    function updatePersonalCalc() {
+      const amount = parseMoney($("personalExpenseAmount").value);
+      const count = state.personalSelected.size;
+      $("personalCalcCount").textContent = String(count);
+      $("personalCalcShare").textContent = currency.format(count ? amount / count : 0);
+      renderPersonalMemberButtons();
+    }
+
     function resetForm() {
       $("editingId").value = "";
       $("formTitle").textContent = "Novo lancamento";
       $("saveBtn").textContent = "Salvar lancamento";
       $("expenseForm").reset();
+      $("expenseCategory").value = "atelier";
       $("expenseTypeSelect").value = "";
       $("expenseKind").value = "debit";
       $("expenseDate").value = today();
       state.selected = new Set(state.members.filter((m) => m.active).map((m) => m.id));
       updateCalc();
+    }
+
+    function resetPersonalForm() {
+      $("personalExpenseForm").reset();
+      $("personalExpenseTypeSelect").value = "";
+      $("personalExpenseDate").value = today();
+      state.personalSelected = new Set();
+      updatePersonalCalc();
     }
 
     function editExpense(id) {
@@ -1466,6 +1614,7 @@
       $("formTitle").textContent = "Editar lancamento";
       $("saveBtn").textContent = "Atualizar lancamento";
       $("expenseName").value = expense.name;
+      $("expenseCategory").value = expense.category === "personal" ? "personal" : "atelier";
       $("expenseTypeSelect").value = expense.expense_type_id || "";
       $("expenseKind").value = expense.kind || "debit";
       $("expenseAmount").value = String(expense.amount.toFixed(2)).replace(".", ",");
@@ -1474,6 +1623,7 @@
       $("expenseRecurring").checked = Boolean(expense.recurring_template_id);
       state.selected = new Set(expense.participants);
       updateCalc();
+      switchTab("launches");
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -1486,6 +1636,14 @@
     async function makeRecurring(id) {
       applyDashboard(await api(`/api/expenses/${id}/recurring`, { method: "POST", body: "{}" }));
       showToast("Despesa marcada como recorrente.");
+    }
+
+    async function markExpenseCategory(id, category) {
+      applyDashboard(await api(`/api/expenses/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ category })
+      }));
+      showToast(category === "personal" ? "Despesa movida para pessoal." : "Despesa voltou para atelier.");
     }
 
     function switchTab(name) {
@@ -1532,9 +1690,17 @@
       state.selected.has(button.dataset.member) ? state.selected.delete(button.dataset.member) : state.selected.add(button.dataset.member);
       updateCalc();
     });
+    $("personalMemberButtons").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-personal-member]");
+      if (!button) return;
+      state.personalSelected.has(button.dataset.personalMember) ? state.personalSelected.delete(button.dataset.personalMember) : state.personalSelected.add(button.dataset.personalMember);
+      updatePersonalCalc();
+    });
     $("expenseAmount").addEventListener("input", updateCalc);
     $("expenseKind").addEventListener("change", updateCalc);
+    $("personalExpenseAmount").addEventListener("input", updatePersonalCalc);
     $("clearBtn").addEventListener("click", resetForm);
+    $("personalClearBtn").addEventListener("click", resetPersonalForm);
 
     $("expenseForm").addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -1544,6 +1710,7 @@
         expense_type_id: $("expenseTypeSelect").value,
         amount: $("expenseAmount").value,
         kind: $("expenseKind").value,
+        category: $("expenseCategory").value || "atelier",
         date: $("expenseDate").value,
         participants: [...state.selected],
         notes: $("expenseNotes").value,
@@ -1555,6 +1722,24 @@
       }));
       resetForm();
       showToast(editingId ? "Lancamento atualizado." : "Lancamento cadastrado.");
+    });
+
+    $("personalExpenseForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const payload = {
+        name: $("personalExpenseName").value,
+        expense_type_id: $("personalExpenseTypeSelect").value,
+        amount: $("personalExpenseAmount").value,
+        kind: "debit",
+        category: "personal",
+        date: $("personalExpenseDate").value,
+        participants: [...state.personalSelected],
+        notes: $("personalExpenseNotes").value,
+        recurring: false
+      };
+      applyDashboard(await api("/api/expenses", { method: "POST", body: JSON.stringify(payload) }));
+      resetPersonalForm();
+      showToast("Despesa pessoal cadastrada.");
     });
 
     $("memberForm").addEventListener("submit", async (event) => {
@@ -1595,6 +1780,11 @@
       if (item) $("expenseName").value = item.name;
     });
 
+    $("personalExpenseTypeSelect").addEventListener("change", () => {
+      const item = expenseTypeById($("personalExpenseTypeSelect").value);
+      if (item) $("personalExpenseName").value = item.name;
+    });
+
     function applyExpenseSearch() {
       state.expenseQuery = $("expenseSearch").value.trim();
       state.expenseStartDate = $("expenseStartDate").value;
@@ -1627,9 +1817,20 @@
       const edit = event.target.closest("[data-edit]");
       const del = event.target.closest("[data-delete]");
       const recurring = event.target.closest("[data-recurring]");
+      const personal = event.target.closest("[data-mark-personal]");
       if (edit) editExpense(edit.dataset.edit);
       if (del) deleteExpense(del.dataset.delete);
       if (recurring) makeRecurring(recurring.dataset.recurring);
+      if (personal) markExpenseCategory(personal.dataset.markPersonal, "personal");
+    });
+
+    $("personalExpenseList").addEventListener("click", (event) => {
+      const edit = event.target.closest("[data-edit]");
+      const del = event.target.closest("[data-delete]");
+      const atelier = event.target.closest("[data-mark-atelier]");
+      if (edit) editExpense(edit.dataset.edit);
+      if (del) deleteExpense(del.dataset.delete);
+      if (atelier) markExpenseCategory(atelier.dataset.markAtelier, "atelier");
     });
 
     $("recurringList").addEventListener("click", async (event) => {
@@ -1651,6 +1852,7 @@
 
     $("monthFilter").addEventListener("change", () => load($("monthFilter").value || new Date().toISOString().slice(0, 7)));
     $("expenseMonthFilter").addEventListener("change", () => load($("expenseMonthFilter").value || new Date().toISOString().slice(0, 7)));
+    $("personalMonthFilter").addEventListener("change", () => load($("personalMonthFilter").value || new Date().toISOString().slice(0, 7)));
     $("exportBtn").addEventListener("click", () => { window.location.href = `/api/export.csv?month=${encodeURIComponent(state.month)}`; });
     function applyGroupedSearch() {
       state.groupQuery = $("groupSearch").value.trim();
@@ -1782,11 +1984,13 @@
 
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/service-worker.js").catch(() => {});
     $("expenseDate").value = today();
+    $("personalExpenseDate").value = today();
     $("movementDate").value = today();
     $("monthFilter").value = state.month;
     $("expenseMonthFilter").value = state.month;
+    $("personalMonthFilter").value = state.month;
     initProsperityPlayer();
-    load().then(resetForm).catch((error) => showToast(error.message));
+    load().then(() => { resetForm(); resetPersonalForm(); }).catch((error) => showToast(error.message));
   </script>
 </body>
 </html>
