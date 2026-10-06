@@ -147,6 +147,18 @@
     .card strong { display: block; font-size: 20px; margin-top: 4px; }
     .card.ok strong { color: var(--ok); }
     .card.warn strong { color: var(--danger); }
+    .card-button {
+      width: 100%;
+      min-height: 86px;
+      color: var(--text);
+      text-align: left;
+      display: block;
+      box-shadow: none;
+    }
+    .card-button.active { background: #fff7e4; border-color: rgba(183,125,24,.65); }
+    .card-button span { color: var(--muted); font-weight: 500; }
+    .card-button strong { line-height: 1.15; }
+    .admin-detail-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; margin: 14px 0 10px; }
 
     .list { display: grid; gap: 10px; }
     .expense, .movement {
@@ -559,6 +571,14 @@
               </label>
             </div>
             <div class="cards" id="adminCards"></div>
+            <div class="admin-detail-head">
+              <div>
+                <h2 id="adminDetailTitle">Detalhes</h2>
+                <p class="muted" id="adminDetailSubtitle">Clique em um card para ver os lancamentos.</p>
+              </div>
+              <span class="pill" id="adminDetailTotal">R$ 0,00</span>
+            </div>
+            <div class="list" id="adminDetailList"></div>
             <div class="search-panel hidden" aria-hidden="true">
               <div>
                 <h2>Buscar agrupado no admin</h2>
@@ -664,6 +684,7 @@
       month: new Date().toISOString().slice(0, 7),
       adminPin: localStorage.getItem("atelierAdminPin") || "",
       adminMember: "",
+      adminDetailMode: "expenses",
       groupQuery: "",
       groupMode: "expense",
       adminGroupQuery: "",
@@ -929,15 +950,16 @@
       return true;
     }
 
-    function memberEntries(memberId) {
+    function memberEntries(memberId, applyMemberFilters = true) {
       const query = norm(state.memberQuery);
       const entries = [
         ...memberExpenses(memberId).map((expense) => ({
           source: "expense",
           kind: expense.kind === "credit" ? "credit" : "expense",
+          category: expense.category === "personal" ? "personal" : "atelier",
           date: expense.date,
           title: expense.name,
-          description: expense.notes || `${expense.participant_count} participante(s)`,
+          description: `${expense.category === "personal" ? "Pessoal" : "Atelier"} · ${expense.notes || `${expense.participant_count} participante(s)`}`,
           amount: expense.kind === "credit" ? Math.abs(Number(expense.shares[memberId] || 0)) : -Math.abs(Number(expense.shares[memberId] || 0)),
           total: Number(expense.signed_amount ?? expense.amount ?? 0),
           participants: (expense.participants || []).map(memberName).join(", ")
@@ -953,11 +975,13 @@
           participants: memberName(movement.member_id)
         }))
       ];
-      return entries
-        .filter((entry) => inDateRange(entry.date))
-        .filter((entry) => state.memberKind === "all" || entry.kind === state.memberKind || (state.memberKind === "expense" && entry.source === "expense"))
-        .filter((entry) => !query || [entry.title, entry.description, entry.participants, entry.kind].map(norm).join(" ").includes(query))
-        .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+      const filtered = applyMemberFilters
+        ? entries
+          .filter((entry) => inDateRange(entry.date))
+          .filter((entry) => state.memberKind === "all" || entry.kind === state.memberKind || (state.memberKind === "expense" && entry.source === "expense"))
+          .filter((entry) => !query || [entry.title, entry.description, entry.participants, entry.kind].map(norm).join(" ").includes(query))
+        : entries;
+      return filtered.sort((a, b) => String(b.date).localeCompare(String(a.date)));
     }
 
     function renderMemberSummary(entries) {
@@ -1319,16 +1343,17 @@
 
       const balance = state.adminBalances[state.adminMember] || {};
       $("adminCards").innerHTML = `
-        <div class="card ok"><span class="muted">Producao</span><strong>${currency.format(balance.production || 0)}</strong></div>
-        <div class="card ok"><span class="muted">Creditos</span><strong>${currency.format(balance.credit || 0)}</strong></div>
-        <div class="card warn"><span class="muted">Debitos manuais</span><strong>${signedCurrency(-Math.abs(balance.debit || 0))}</strong></div>
-        <div class="card warn"><span class="muted">Pagamentos</span><strong>${signedCurrency(-Math.abs(balance.payment || 0))}</strong></div>
-        <div class="card warn"><span class="muted">Despesas atelier</span><strong>${signedCurrency(-Math.abs(balance.atelier_expenses || 0))}</strong></div>
-        <div class="card warn"><span class="muted">Despesas pessoais</span><strong>${signedCurrency(-Math.abs(balance.personal_expenses || 0))}</strong></div>
-        <div class="card warn"><span class="muted">Total despesas</span><strong>${signedCurrency(-Math.abs(balance.expenses || 0))}</strong></div>
-        <div class="card ${(balance.production_net || 0) >= 0 ? "ok" : "warn"}"><span class="muted">Producao apos pagamentos</span><strong>${currency.format(balance.production_net || 0)}</strong></div>
-        <div class="card ${(balance.balance || 0) >= 0 ? "ok" : "warn"}"><span class="muted">Saldo final</span><strong>${currency.format(balance.balance || 0)}</strong></div>
+        ${adminCard("production", "Producao", currency.format(balance.production || 0), "ok")}
+        ${adminCard("credit", "Creditos", currency.format(balance.credit || 0), "ok")}
+        ${adminCard("debit", "Debitos manuais", signedCurrency(-Math.abs(balance.debit || 0)), "warn")}
+        ${adminCard("payment", "Pagamentos", signedCurrency(-Math.abs(balance.payment || 0)), "warn")}
+        ${adminCard("atelier", "Despesas atelier", signedCurrency(-Math.abs(balance.atelier_expenses || 0)), "warn")}
+        ${adminCard("personal", "Despesas pessoais", signedCurrency(-Math.abs(balance.personal_expenses || 0)), "warn")}
+        ${adminCard("expenses", "Total despesas", signedCurrency(-Math.abs(balance.expenses || 0)), "warn")}
+        ${adminCard("production_net", "Producao apos pagamentos", currency.format(balance.production_net || 0), (balance.production_net || 0) >= 0 ? "ok" : "warn")}
+        ${adminCard("balance", "Saldo final", currency.format(balance.balance || 0), (balance.balance || 0) >= 0 ? "ok" : "warn")}
       `;
+      renderAdminDetails();
       renderCharts();
       renderMovements();
       renderPayments();
@@ -1412,6 +1437,71 @@
 
     function movementKindLabel(kind) {
       return kind === "production" ? "Producao" : kind === "credit" ? "Credito" : kind === "payment" ? "Pagamento" : "Debito";
+    }
+
+    function adminDetailLabel(mode) {
+      return {
+        production: "Producao",
+        credit: "Creditos",
+        debit: "Debitos manuais",
+        payment: "Pagamentos",
+        atelier: "Despesas atelier",
+        personal: "Despesas pessoais",
+        expenses: "Total despesas",
+        production_net: "Producao apos pagamentos",
+        balance: "Saldo final"
+      }[mode] || "Detalhes";
+    }
+
+    function adminDetailEntries(memberId, mode) {
+      const entries = memberEntries(memberId, false);
+      if (mode === "production") return entries.filter((entry) => entry.source === "movement" && entry.kind === "production");
+      if (mode === "credit") return entries.filter((entry) => entry.kind === "credit");
+      if (mode === "debit") return entries.filter((entry) => entry.source === "movement" && entry.kind === "debit");
+      if (mode === "payment") return entries.filter((entry) => entry.source === "movement" && entry.kind === "payment");
+      if (mode === "atelier") return entries.filter((entry) => entry.source === "expense" && entry.category !== "personal");
+      if (mode === "personal") return entries.filter((entry) => entry.source === "expense" && entry.category === "personal");
+      if (mode === "production_net") return entries.filter((entry) => entry.source === "movement" && (entry.kind === "production" || entry.kind === "payment"));
+      if (mode === "balance") return entries;
+      return entries.filter((entry) => entry.source === "expense");
+    }
+
+    function adminDetailTotal(mode, balance, entries) {
+      if (mode === "production") return Number(balance.production || 0);
+      if (mode === "credit") return Number(balance.credit || 0);
+      if (mode === "debit") return -Math.abs(Number(balance.debit || 0));
+      if (mode === "payment") return -Math.abs(Number(balance.payment || 0));
+      if (mode === "atelier") return -Math.abs(Number(balance.atelier_expenses || 0));
+      if (mode === "personal") return -Math.abs(Number(balance.personal_expenses || 0));
+      if (mode === "expenses") return -Math.abs(Number(balance.expenses || 0));
+      if (mode === "production_net") return Number(balance.production_net || 0);
+      if (mode === "balance") return Number(balance.balance || 0);
+      return entries.reduce((sum, entry) => Number((sum + Number(entry.amount || 0)).toFixed(2)), 0);
+    }
+
+    function adminCard(mode, label, value, tone = "warn") {
+      const active = state.adminDetailMode === mode;
+      return `
+        <button type="button" class="card card-button ${tone} ${active ? "active" : ""}" data-admin-detail="${mode}">
+          <span class="muted">${label}</span>
+          <strong>${value}</strong>
+        </button>
+      `;
+    }
+
+    function renderAdminDetails() {
+      const member = memberById(state.adminMember);
+      if (!member) return;
+      const balance = state.adminBalances[member.id] || {};
+      const mode = state.adminDetailMode || "expenses";
+      const entries = adminDetailEntries(member.id, mode);
+      const total = adminDetailTotal(mode, balance, entries);
+      $("adminDetailTitle").textContent = `${adminDetailLabel(mode)} de ${member.name}`;
+      $("adminDetailSubtitle").textContent = `${entries.length} lancamento(s) em ${formatMonth(state.month)}.`;
+      $("adminDetailTotal").textContent = signedCurrency(total);
+      $("adminDetailTotal").classList.toggle("green", total >= 0);
+      $("adminDetailTotal").classList.toggle("red", total < 0);
+      $("adminDetailList").innerHTML = renderMemberDetails(entries);
     }
 
     function renderAdminGroupedSearch() {
@@ -1950,6 +2040,12 @@
       state.activeMember = state.adminMember;
       renderAdmin();
       renderMemberRails();
+    });
+    $("adminCards").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-admin-detail]");
+      if (!button) return;
+      state.adminDetailMode = button.dataset.adminDetail;
+      renderAdmin();
     });
 
     $("movementForm").addEventListener("submit", async (event) => {
