@@ -251,6 +251,20 @@
     .bar.debit { background: var(--danger); }
     .bar.payment { background: var(--danger); }
 
+    .balance-panel { grid-column: 1 / -1; display: grid; gap: 14px; }
+    .balance-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted); font-weight: 700; }
+    .balance-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+    .balance-chart { position: relative; overflow-x: auto; }
+    .balance-chart svg { display: block; min-width: 460px; }
+    .balance-chart .tip { position: absolute; pointer-events: none; background: #1f1b16; color: #fffaf0; border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.5; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    .balance-ranks { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .balance-ranks .bar-line { grid-template-columns: minmax(90px, 1fr) minmax(60px, 1fr) auto; }
+    .balance-ranks .bar-line span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .balance-ranks .bar-line strong { text-align: right; white-space: nowrap; }
+    .bar.atelier { background: var(--gold); }
+    .bar.personal { background: #8a5cc4; }
+    @media (max-width: 900px) { .balance-ranks { grid-template-columns: 1fr; } }
+
     .admin-lock { max-width: 460px; }
     .hidden { display: none !important; }
     .toast {
@@ -499,6 +513,42 @@
           <p class="muted">Valores consolidados do mes, com producao, ajustes, pagamentos e despesas.</p>
           <div style="height:14px"></div>
           <div class="chart" id="summaryCharts"></div>
+        </section>
+        <section class="panel balance-panel" id="balancePanel">
+          <div class="topbar">
+            <div>
+              <h2>Balanco dos ultimos meses</h2>
+              <p class="muted" id="balanceText">Producao x gastos do laboratorio e pessoais, para ver onde economizar.</p>
+            </div>
+            <label>Periodo
+              <select id="balanceMonths">
+                <option value="3">Ultimos 3 meses</option>
+                <option value="6" selected>Ultimos 6 meses</option>
+                <option value="12">Ultimos 12 meses</option>
+              </select>
+            </label>
+          </div>
+          <div class="summary-kpis" id="balanceKpis"></div>
+          <div class="balance-legend">
+            <span><i style="background:var(--ok)"></i>Producao</span>
+            <span><i style="background:var(--gold)"></i>Gastos laboratorio</span>
+            <span><i style="background:#8a5cc4"></i>Gastos pessoais</span>
+          </div>
+          <div class="balance-chart" id="balanceChart"></div>
+          <div class="balance-ranks">
+            <div class="card">
+              <h3>Onde o laboratorio mais gasta</h3>
+              <p class="muted">Media por mes no periodo e % do gasto do lab.</p>
+              <div style="height:10px"></div>
+              <div class="chart" id="balanceTopAtelier"></div>
+            </div>
+            <div class="card">
+              <h3>Onde mais gastamos no pessoal</h3>
+              <p class="muted">Media por mes no periodo e % do gasto pessoal.</p>
+              <div style="height:10px"></div>
+              <div class="chart" id="balanceTopPersonal"></div>
+            </div>
+          </div>
         </section>
       </main>
     </section>
@@ -786,6 +836,7 @@
       renderRecurring();
       renderAdmin();
       renderSummary();
+      loadBalance();
       renderMemberPage();
       updateCalc();
       updatePersonalCalc();
@@ -1099,6 +1150,100 @@
           </div>
         `;
       }).join("");
+    }
+
+    async function loadBalance() {
+      if (!$("balanceChart")) return;
+      const months = $("balanceMonths").value || "6";
+      try {
+        const response = await fetch(`/api/balance?end=${encodeURIComponent(state.month)}&months=${months}`);
+        if (!response.ok) throw new Error();
+        renderBalance(await response.json());
+      } catch (error) {
+        $("balanceText").textContent = "Nao foi possivel carregar o balanco agora.";
+      }
+    }
+
+    function renderBalance(data) {
+      const avg = data.averages || {};
+      const n = data.active_months || 1;
+      const labPct = avg.production ? Math.round((avg.atelier / avg.production) * 100) : 0;
+      const personalPct = avg.production ? Math.round((avg.personal / avg.production) * 100) : 0;
+      $("balanceText").textContent = `Media de ${n} mes(es) com lancamentos: o laboratorio gasta ${labPct}% da producao e o pessoal ${personalPct}%.`;
+      $("balanceKpis").innerHTML = [
+        `<div class="card ok"><span class="muted">Producao media/mes</span><strong>${currency.format(avg.production || 0)}</strong></div>`,
+        `<div class="card warn"><span class="muted">Gasto lab medio/mes</span><strong>${currency.format(avg.atelier || 0)}</strong></div>`,
+        `<div class="card warn"><span class="muted">Gasto pessoal medio/mes</span><strong>${currency.format(avg.personal || 0)}</strong></div>`,
+        `<div class="card ${(avg.result || 0) >= 0 ? "ok" : "warn"}"><span class="muted">Producao - gastos/mes</span><strong>${currency.format(avg.result || 0)}</strong></div>`
+      ].join("");
+      renderBalanceChart(data.months || []);
+      $("balanceTopAtelier").innerHTML = balanceRanking(data.top_atelier || [], "atelier");
+      $("balanceTopPersonal").innerHTML = balanceRanking(data.top_personal || [], "personal");
+    }
+
+    function balanceRanking(items, type) {
+      if (!items.length) return `<p class="muted">Nenhum gasto ${type === "personal" ? "pessoal" : "do laboratorio"} no periodo.</p>`;
+      const top = items.slice(0, 8);
+      const max = Math.max(1, ...top.map((item) => item.monthly));
+      return top.map((item) => {
+        const width = Math.max(2, Math.round((item.monthly / max) * 100));
+        return `
+          <div class="bar-line">
+            <span title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+            <div class="bar-track"><div class="bar ${type}" style="width:${width}%"></div></div>
+            <strong>${currency.format(item.monthly)} · ${Math.round(item.share * 100)}%</strong>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderBalanceChart(months) {
+      const box = $("balanceChart");
+      const short = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
+      const width = Math.max(460, box.clientWidth || 700);
+      const height = 260;
+      const left = 58, right = 10, top = 22, bottom = 28;
+      const max = Math.max(1, ...months.map((m) => Math.max(m.production, m.atelier + m.personal)));
+      const step = Math.pow(10, Math.floor(Math.log10(max)));
+      const niceMax = Math.ceil(max / step) * step;
+      const y = (value) => top + (height - top - bottom) * (1 - value / niceMax);
+      const band = (width - left - right) / Math.max(1, months.length);
+      const barW = Math.min(30, band * 0.3);
+      const ticks = [0, .25, .5, .75, 1].map((t) => niceMax * t);
+      const parts = [];
+      ticks.forEach((t) => {
+        parts.push(`<line x1="${left}" x2="${width - right}" y1="${y(t)}" y2="${y(t)}" stroke="#eee4d4"/>`);
+        parts.push(`<text x="${left - 8}" y="${y(t) + 4}" text-anchor="end" font-size="11" fill="#756b5d">R$ ${short.format(t)}</text>`);
+      });
+      months.forEach((m, index) => {
+        const cx = left + band * index + band / 2;
+        const px = cx - barW - 2, gx = cx + 2;
+        const spent = m.atelier + m.personal;
+        parts.push(`<g data-balance-index="${index}">`);
+        parts.push(`<rect x="${left + band * index}" y="${top}" width="${band}" height="${height - top - bottom}" fill="transparent"/>`);
+        parts.push(`<rect x="${px}" y="${y(m.production)}" width="${barW}" height="${y(0) - y(m.production)}" rx="4" fill="#248a58"/>`);
+        parts.push(`<rect x="${gx}" y="${y(m.atelier)}" width="${barW}" height="${y(0) - y(m.atelier)}" fill="#b77d18"/>`);
+        parts.push(`<rect x="${gx}" y="${y(spent)}" width="${barW}" height="${y(m.atelier) - y(spent)}" fill="#8a5cc4"/>`);
+        if (m.production) parts.push(`<text x="${px + barW / 2}" y="${y(m.production) - 5}" text-anchor="middle" font-size="10" fill="#756b5d">${short.format(m.production)}</text>`);
+        if (spent) parts.push(`<text x="${gx + barW / 2}" y="${y(spent) - 5}" text-anchor="middle" font-size="10" fill="#756b5d">${short.format(spent)}</text>`);
+        parts.push(`<text x="${cx}" y="${height - 8}" text-anchor="middle" font-size="12" fill="#756b5d">${formatMonth(m.month)}</text>`);
+        parts.push(`</g>`);
+      });
+      parts.push(`<line x1="${left}" x2="${width - right}" y1="${y(0)}" y2="${y(0)}" stroke="#ddd5c6"/>`);
+      box.innerHTML = `<svg width="100%" viewBox="0 0 ${width} ${height}" role="img" aria-label="Producao e gastos por mes">${parts.join("")}</svg><div class="tip hidden"></div>`;
+      const tip = box.querySelector(".tip");
+      box.querySelectorAll("[data-balance-index]").forEach((group) => {
+        group.addEventListener("mousemove", (event) => {
+          const m = months[Number(group.dataset.balanceIndex)];
+          tip.innerHTML = `<strong>${formatMonth(m.month)}</strong><br>Producao: ${currency.format(m.production)}<br>Laboratorio: ${currency.format(m.atelier)}<br>Pessoal: ${currency.format(m.personal)}<br>Producao - gastos: ${currency.format(m.result)}`;
+          tip.classList.remove("hidden");
+          const rect = box.getBoundingClientRect();
+          const x = event.clientX - rect.left + box.scrollLeft;
+          tip.style.left = `${Math.max(0, Math.min(x + 12, box.scrollWidth - tip.offsetWidth - 4))}px`;
+          tip.style.top = `${Math.max(0, event.clientY - rect.top - tip.offsetHeight - 8)}px`;
+        });
+        group.addEventListener("mouseleave", () => tip.classList.add("hidden"));
+      });
     }
 
     function emptyMemberTotals() {
@@ -1941,6 +2086,7 @@
     });
 
     $("monthFilter").addEventListener("change", () => load($("monthFilter").value || new Date().toISOString().slice(0, 7)));
+    $("balanceMonths").addEventListener("change", loadBalance);
     $("expenseMonthFilter").addEventListener("change", () => load($("expenseMonthFilter").value || new Date().toISOString().slice(0, 7)));
     $("personalMonthFilter").addEventListener("change", () => load($("personalMonthFilter").value || new Date().toISOString().slice(0, 7)));
     $("exportBtn").addEventListener("click", () => { window.location.href = `/api/export.csv?month=${encodeURIComponent(state.month)}`; });

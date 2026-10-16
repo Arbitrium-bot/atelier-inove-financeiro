@@ -361,6 +361,75 @@ def api_dashboard():
     return jsonify(dashboard(load_db(), request.args.get("month")))
 
 
+def previous_month(month):
+    year, month_number = [int(part) for part in month.split("-")]
+    month_number -= 1
+    if month_number == 0:
+        month_number = 12
+        year -= 1
+    return f"{year:04d}-{month_number:02d}"
+
+
+def balance(data, end_month=None, months=6):
+    end_month = end_month or current_month()
+    months = max(1, min(24, int(months or 6)))
+    window = [end_month]
+    while len(window) < months:
+        window.insert(0, previous_month(window[0]))
+    rows = []
+    ranking = {"atelier": {}, "personal": {}}
+    for month in window:
+        expenses = [e for e in month_filter(data["expenses"], month) if e.get("kind") != "credit"]
+        movements = [movement_view(m) for m in month_filter(data["movements"], month)]
+        lab = sum((money(e.get("amount")) for e in expenses if e.get("category") != "personal"), Decimal("0"))
+        personal = sum((money(e.get("amount")) for e in expenses if e.get("category") == "personal"), Decimal("0"))
+        production = sum((money(m["amount"]) for m in movements if m["kind"] == "production"), Decimal("0"))
+        rows.append(
+            {
+                "month": month,
+                "production": as_float(production),
+                "atelier": as_float(lab),
+                "personal": as_float(personal),
+                "result": as_float(production - lab - personal),
+            }
+        )
+        for expense in expenses:
+            category = "personal" if expense.get("category") == "personal" else "atelier"
+            name = str(expense.get("name", "")).strip() or "Sem nome"
+            item = ranking[category].setdefault(slug(name), {"name": name, "total": Decimal("0")})
+            item["total"] += money(expense.get("amount"))
+    active = [r for r in rows if r["production"] or r["atelier"] or r["personal"]] or rows
+
+    def top(category):
+        total = sum((item["total"] for item in ranking[category].values()), Decimal("0"))
+        items = sorted(ranking[category].values(), key=lambda item: item["total"], reverse=True)
+        return [
+            {
+                "name": item["name"],
+                "total": as_float(item["total"]),
+                "monthly": as_float(item["total"] / len(active)),
+                "share": round(float(item["total"] / total), 4) if total else 0,
+            }
+            for item in items
+        ]
+
+    return {
+        "months": rows,
+        "active_months": len(active),
+        "averages": {
+            key: round(sum(r[key] for r in active) / len(active), 2)
+            for key in ("production", "atelier", "personal", "result")
+        },
+        "top_atelier": top("atelier"),
+        "top_personal": top("personal"),
+    }
+
+
+@app.get("/api/balance")
+def api_balance():
+    return jsonify(balance(load_db(), request.args.get("end"), request.args.get("months", 6)))
+
+
 @app.post("/api/admin/unlock")
 def admin_unlock():
     error = require_admin()
