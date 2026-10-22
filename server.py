@@ -370,6 +370,18 @@ def previous_month(month):
     return f"{year:04d}-{month_number:02d}"
 
 
+PERSONAL_HINTS = ("casa", "carro", "apto", "apartamento", "seguro", "pessoal", "terreno", "chacara", "escola", "medico", "viagem", "condominio", "ben")
+
+
+def movement_category(movement):
+    """Categoria de um debito manual do admin: a escolhida no lancamento ou, nos antigos, pela descricao (casa, carro, apto... = pessoal)."""
+    category = movement.get("category")
+    if category in ("atelier", "personal"):
+        return category
+    words = set(re.split(r"[^a-z0-9]+", slug(str(movement.get("description") or "")).replace("-", " ")))
+    return "personal" if words & set(PERSONAL_HINTS) else "atelier"
+
+
 def balance(data, end_month=None, months=6):
     end_month = end_month or current_month()
     months = max(1, min(24, int(months or 6)))
@@ -379,10 +391,20 @@ def balance(data, end_month=None, months=6):
     rows = []
     ranking = {"atelier": {}, "personal": {}}
     for month in window:
-        expenses = [e for e in month_filter(data["expenses"], month) if e.get("kind") != "credit"]
+        # tudo o que e gasto entra: despesas (debitos menos creditos de despesa) e os debitos manuais lancados no admin
+        expenses = list(month_filter(data["expenses"], month))
         movements = [movement_view(m) for m in month_filter(data["movements"], month)]
-        lab = sum((money(e.get("amount")) for e in expenses if e.get("category") != "personal"), Decimal("0"))
-        personal = sum((money(e.get("amount")) for e in expenses if e.get("category") == "personal"), Decimal("0"))
+        gastos = []
+        for e in expenses:
+            sign = Decimal("-1") if e.get("kind") == "credit" else Decimal("1")
+            gastos.append(("personal" if e.get("category") == "personal" else "atelier", str(e.get("name", "")).strip() or "Sem nome", sign * money(e.get("amount")), False))
+        for m in movements:
+            if m["kind"] == "debit":
+                gastos.append((movement_category(m), (str(m.get("description") or "").strip() or "Debito manual") + " (admin)", money(m["amount"]), True))
+        lab = sum((v for c, _, v, _ in gastos if c == "atelier"), Decimal("0"))
+        personal = sum((v for c, _, v, _ in gastos if c == "personal"), Decimal("0"))
+        manual = sum((v for _, _, v, man in gastos if man), Decimal("0"))
+        credits = sum((money(m["amount"]) for m in movements if m["kind"] == "credit"), Decimal("0"))
         production = sum((money(m["amount"]) for m in movements if m["kind"] == "production"), Decimal("0"))
         rows.append(
             {
@@ -391,18 +413,18 @@ def balance(data, end_month=None, months=6):
                 "atelier": as_float(lab),
                 "personal": as_float(personal),
                 "result": as_float(production - lab - personal),
+                "manual_debits": as_float(manual),
+                "admin_credits": as_float(credits),
             }
         )
-        for expense in expenses:
-            category = "personal" if expense.get("category") == "personal" else "atelier"
-            name = str(expense.get("name", "")).strip() or "Sem nome"
+        for category, name, value, _ in gastos:
             item = ranking[category].setdefault(slug(name), {"name": name, "total": Decimal("0")})
-            item["total"] += money(expense.get("amount"))
+            item["total"] += value
     active = [r for r in rows if r["production"] or r["atelier"] or r["personal"]] or rows
 
     def top(category):
         total = sum((item["total"] for item in ranking[category].values()), Decimal("0"))
-        items = sorted(ranking[category].values(), key=lambda item: item["total"], reverse=True)
+        items = sorted((i for i in ranking[category].values() if i["total"] > 0), key=lambda item: item["total"], reverse=True)
         return [
             {
                 "name": item["name"],
@@ -418,7 +440,7 @@ def balance(data, end_month=None, months=6):
         "active_months": len(active),
         "averages": {
             key: round(sum(r[key] for r in active) / len(active), 2)
-            for key in ("production", "atelier", "personal", "result")
+            for key in ("production", "atelier", "personal", "result", "manual_debits", "admin_credits")
         },
         "top_atelier": top("atelier"),
         "top_personal": top("personal"),
@@ -662,6 +684,7 @@ def create_movement():
         "amount": as_float(money(payload.get("amount"))),
         "date": payload.get("date") or date.today().isoformat(),
         "description": str(payload.get("description", "")).strip(),
+        "category": ("personal" if payload.get("category") == "personal" else "atelier") if kind == "debit" else None,
         "created_at": now_iso(),
         "updated_at": now_iso(),
     }

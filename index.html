@@ -615,6 +615,12 @@
               </div>
               <label>Data <input id="movementDate" type="date" required></label>
               <label>Descricao <input id="movementDescription" placeholder="Ex: recebido, ajuste, material pago"></label>
+              <label>Debito entra no balanco como
+                <select id="movementCategory">
+                  <option value="atelier">Gasto do laboratorio</option>
+                  <option value="personal">Gasto pessoal</option>
+                </select>
+              </label>
               <button type="submit">Salvar no admin</button>
             </form>
             </section>
@@ -1179,7 +1185,7 @@
       const n = data.active_months || 1;
       const labPct = avg.production ? Math.round((avg.atelier / avg.production) * 100) : 0;
       const personalPct = avg.production ? Math.round((avg.personal / avg.production) * 100) : 0;
-      $("balanceText").textContent = `Media de ${n} mes(es) com lancamentos: o laboratorio gasta ${labPct}% da producao e o pessoal ${personalPct}%.`;
+      $("balanceText").textContent = `Media de ${n} mes(es) com lancamentos: o laboratorio gasta ${labPct}% da producao e o pessoal ${personalPct}%. Inclui as despesas e os debitos manuais do admin (${currency.format(avg.manual_debits || 0)}/mes).`;
       $("balanceKpis").innerHTML = [
         `<div class="card ok"><span class="muted">Producao media/mes</span><strong>${currency.format(avg.production || 0)}</strong></div>`,
         `<div class="card warn"><span class="muted">Gasto lab medio/mes</span><strong>${currency.format(avg.atelier || 0)}</strong></div>`,
@@ -2214,7 +2220,8 @@
         kind: $("movementKind").value,
         amount: $("movementAmount").value,
         date: $("movementDate").value,
-        description: $("movementDescription").value
+        description: $("movementDescription").value,
+        category: $("movementCategory").value
       };
       applyDashboard(await api(`/api/admin/movements?month=${encodeURIComponent(state.month)}`, {
         method: "POST",
